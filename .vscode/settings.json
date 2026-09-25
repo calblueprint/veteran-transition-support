@@ -1,0 +1,10 @@
+{
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2,
+    "files.eol": "\n",
+    "prettier.endOfLine": "lf",
+    "tailwindCSS.classFunctions": ["cva", "cx"],
+    "files.associations": {
+        "*.css": "tailwindcss"
+    }
+}
