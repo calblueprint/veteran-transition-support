@@ -106,3 +106,13 @@ To verify the flow:
 Run `pnpm test` for validation tests and `pnpm pre-commit` for the repository's
 TypeScript, lint, and formatting checks. Resume upload and auth integration
 are deferred to later sprints.
+
+The feature separates rendering, validation, and database access:
+
+- `app/(participant)/profile/page.tsx` owns form state and user feedback.
+- `lib/participant-profile.ts` defines profile types, database enum choices,
+  field normalization, and validation without React or Supabase dependencies.
+- `actions/supabase/queries/participants.ts` loads and saves the test participant.
+- `tests/participant-profile.test.mjs` checks validation and data conversion
+  offline with Node's built-in test runner. Tests require Node.js 22.9 or newer,
+  matching `package.json`, and also run in GitHub Actions.

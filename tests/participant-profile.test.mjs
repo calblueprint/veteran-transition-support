@@ -1,3 +1,9 @@
+/**
+ * @fileoverview Tests the profile data contract using Node's built-in runner.
+ * Run with `pnpm test`; no Supabase credentials or database access are needed.
+ * The .mjs runner imports the TypeScript module through Node's type stripping.
+ */
+
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
@@ -40,6 +46,20 @@ test("text is trimmed before saving or checking required values", () => {
   const blank = validateProfile({ ...validProfile, rank: "   " });
   assert.equal(blank.success, false);
   assert.ok(blank.errors.rank);
+});
+
+test("normalization preserves raw input and excludes database-only fields", () => {
+  const input = Object.freeze({
+    ...validProfile,
+    first_name: "  Test  ",
+    id: "must-not-override-the-participant-id",
+    resume_url: "must-not-overwrite-an-existing-resume",
+  });
+  const result = validateProfile(input);
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.data, validProfile);
+  assert.equal(input.first_name, "  Test  ");
 });
 
 test("an invalid email cannot be saved", () => {

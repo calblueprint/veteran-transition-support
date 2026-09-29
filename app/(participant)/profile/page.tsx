@@ -4,7 +4,7 @@ import type {
   ProfileErrors,
   ProfileFormValues,
 } from "@/lib/participant-profile";
-import type { FormEvent, ReactNode } from "react";
+import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
   fetchParticipantProfile,
@@ -19,17 +19,15 @@ import {
 } from "@/lib/participant-profile";
 import styles from "./profile.module.css";
 
-function Field({
-  name,
-  label,
-  error,
-  children,
-}: {
+type FieldProps = {
   name: keyof ProfileFormValues;
   label: string;
   error?: string;
   children: ReactNode;
-}) {
+};
+
+/** Associates a control with its label and optional accessible error message. */
+function Field({ name, label, error, children }: FieldProps) {
   return (
     <div className={styles.field}>
       <label htmlFor={name}>{label}</label>
@@ -43,6 +41,7 @@ function Field({
   );
 }
 
+/** Loads and edits the shared development participant until auth is available. */
 export default function ProfilePage() {
   const [values, setValues] = useState<ProfileFormValues>(EMPTY_PROFILE);
   const [errors, setErrors] = useState<ProfileErrors>({});
@@ -55,8 +54,10 @@ export default function ProfilePage() {
   const [loadAttempt, setLoadAttempt] = useState(0);
   const saveInProgress = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const isFormDisabled = loading || saving || Boolean(loadError);
 
   useEffect(() => {
+    // Ignore responses from a previous effect after unmount or a load retry.
     let active = true;
     async function loadProfile() {
       try {
@@ -91,9 +92,8 @@ export default function ProfilePage() {
       id: name,
       name,
       value: values[name],
-      onChange: (
-        event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-      ) => updateField(name, event.target.value),
+      onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+        updateField(name, event.target.value),
       "aria-invalid": Boolean(errors[name]),
       "aria-describedby": errors[name] ? `${name}-error` : undefined,
     };
@@ -113,6 +113,8 @@ export default function ProfilePage() {
       return;
     }
     setErrors({});
+    // A ref blocks duplicate submissions immediately, before React renders the
+    // disabled button. State alone does not guard this interval.
     saveInProgress.current = true;
     setSaving(true);
     try {
@@ -125,6 +127,8 @@ export default function ProfilePage() {
         typeof error === "object" && error !== null && "code" in error
           ? error.code
           : undefined;
+      // 23505 is an insert conflict; PGRST116 means the expected single row was
+      // not returned. Reload instead of assuming that the cached row still exists.
       setSaveError(
         code === "23505" || code === "PGRST116"
           ? "This profile changed in another session. Reload the page and try again."
@@ -165,7 +169,7 @@ export default function ProfilePage() {
 
       <form ref={formRef} onSubmit={handleSubmit} noValidate>
         <p className={styles.requiredNote}>Fields marked * are required.</p>
-        <fieldset disabled={loading || saving || Boolean(loadError)}>
+        <fieldset disabled={isFormDisabled}>
           <legend>Personal information</legend>
           <div className={styles.grid}>
             <Field
@@ -201,7 +205,7 @@ export default function ProfilePage() {
           </div>
         </fieldset>
 
-        <fieldset disabled={loading || saving || Boolean(loadError)}>
+        <fieldset disabled={isFormDisabled}>
           <legend>Military service</legend>
           <div className={styles.grid}>
             <Field
@@ -252,7 +256,7 @@ export default function ProfilePage() {
           </div>
         </fieldset>
 
-        <fieldset disabled={loading || saving || Boolean(loadError)}>
+        <fieldset disabled={isFormDisabled}>
           <legend>Education</legend>
           <Field
             name="education_level"
@@ -286,7 +290,7 @@ export default function ProfilePage() {
         <button
           className={styles.saveButton}
           type="submit"
-          disabled={loading || saving || Boolean(loadError)}
+          disabled={isFormDisabled}
         >
           {saving ? "Saving…" : "Save profile"}
         </button>

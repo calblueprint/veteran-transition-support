@@ -1,4 +1,10 @@
-// Match the public.military_branch and public.education_level database enums.
+/**
+ * @fileoverview Defines the profile form's data contract and pure validation.
+ * This module has no React or Supabase dependencies so its rules can be tested
+ * without a browser, credentials, or database writes.
+ */
+
+/** Maps public.military_branch enum values to participant-facing labels. */
 export const MILITARY_BRANCHES = [
   { value: "army", label: "Army" },
   { value: "navy", label: "Navy" },
@@ -8,6 +14,7 @@ export const MILITARY_BRANCHES = [
   { value: "space_force", label: "Space Force" },
 ] as const;
 
+/** Maps public.education_level enum values to participant-facing labels. */
 export const EDUCATION_LEVELS = [
   { value: "high_school", label: "High school" },
   { value: "some_college", label: "Some college" },
@@ -17,9 +24,12 @@ export const EDUCATION_LEVELS = [
   { value: "doctorate", label: "Doctorate" },
 ] as const;
 
+/** A stored military branch value, derived from the dropdown's allowed values. */
 export type MilitaryBranch = (typeof MILITARY_BRANCHES)[number]["value"];
+/** A stored education value, derived from the dropdown's allowed values. */
 export type EducationLevel = (typeof EDUCATION_LEVELS)[number]["value"];
 
+/** Raw input values; unfilled controls use empty strings rather than null. */
 export type ProfileFormValues = {
   first_name: string;
   last_name: string;
@@ -32,8 +42,13 @@ export type ProfileFormValues = {
   education_level: string;
 };
 
+/** Field-specific messages; absent or undefined entries have no active error. */
 export type ProfileErrors = Partial<Record<keyof ProfileFormValues, string>>;
 
+/**
+ * Editable database fields returned by validateProfile after normalization.
+ * A null end date means the participant is still serving. Dates use YYYY-MM-DD.
+ */
 export type ParticipantProfileInput = Omit<
   ProfileFormValues,
   "military_branch" | "education_level" | "service_end_date"
@@ -43,7 +58,11 @@ export type ParticipantProfileInput = Omit<
   service_end_date: string | null;
 };
 
-// Existing records may have incomplete service/education information.
+/**
+ * The database projection loaded by the profile page.
+ * Existing rows may have incomplete service or education information even
+ * though the form requires those fields on its next save.
+ */
 export type ParticipantProfile = {
   id: string;
   first_name: string;
@@ -57,6 +76,7 @@ export type ParticipantProfile = {
   education_level: EducationLevel | null;
 };
 
+/** Initial values for a participant who does not yet have a database row. */
 export const EMPTY_PROFILE: ProfileFormValues = {
   first_name: "",
   last_name: "",
@@ -69,6 +89,21 @@ export const EMPTY_PROFILE: ProfileFormValues = {
   education_level: "",
 };
 
+const REQUIRED_TEXT_FIELDS: ReadonlyArray<
+  readonly [keyof ProfileFormValues, string]
+> = [
+  ["first_name", "First name"],
+  ["last_name", "Last name"],
+  ["email", "Email"],
+  ["rank", "Rank"],
+  ["mos", "MOS / military occupation"],
+  ["service_start_date", "Service start date"],
+];
+
+/**
+ * Converts a stored row into controlled input values without mutating it.
+ * Database-only fields, including the participant ID, are omitted.
+ */
 export function profileToForm(profile: ParticipantProfile): ProfileFormValues {
   return {
     first_name: profile.first_name,
@@ -88,45 +123,57 @@ function isValidDate(value: string): boolean {
     return false;
   }
   const date = new Date(`${value}T00:00:00Z`);
+  // Date parsing can normalize impossible dates, such as February 30. A UTC
+  // round trip rejects those values without depending on the browser's timezone.
   return (
     !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
   );
 }
 
+/**
+ * Validates raw form values and returns either field errors or a save payload.
+ * Trims input without mutating it and converts an empty end date to null.
+ * Only editable fields are included in the result. These client-side checks
+ * provide form feedback; database constraints and RLS enforce data access.
+ */
 export function validateProfile(
-  values: ProfileFormValues,
+  values: Readonly<ProfileFormValues>,
 ):
   | { success: true; data: ParticipantProfileInput }
   | { success: false; errors: ProfileErrors } {
-  const trimmed = Object.fromEntries(
-    Object.entries(values).map(([key, value]) => [key, value.trim()]),
-  ) as ProfileFormValues;
+  // Enumerate editable fields so unexpected properties cannot enter a write
+  // payload if a caller passes an object that also contains database fields.
+  const trimmed: ProfileFormValues = {
+    first_name: values.first_name.trim(),
+    last_name: values.last_name.trim(),
+    email: values.email.trim(),
+    military_branch: values.military_branch.trim(),
+    rank: values.rank.trim(),
+    mos: values.mos.trim(),
+    service_start_date: values.service_start_date.trim(),
+    service_end_date: values.service_end_date.trim(),
+    education_level: values.education_level.trim(),
+  };
   const errors: ProfileErrors = {};
 
-  const requiredFields = {
-    first_name: "First name",
-    last_name: "Last name",
-    email: "Email",
-    rank: "Rank",
-    mos: "MOS / military occupation",
-    service_start_date: "Service start date",
-  } as const;
-  for (const [field, label] of Object.entries(requiredFields)) {
-    if (!trimmed[field as keyof typeof requiredFields]) {
-      errors[field as keyof typeof requiredFields] = `${label} is required.`;
+  for (const [field, label] of REQUIRED_TEXT_FIELDS) {
+    if (!trimmed[field]) {
+      errors[field] = `${label} is required.`;
     }
   }
   if (trimmed.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed.email)) {
     errors.email = "Enter a valid email address.";
   }
-  if (
-    !MILITARY_BRANCHES.some(option => option.value === trimmed.military_branch)
-  ) {
+  const militaryBranch = MILITARY_BRANCHES.find(
+    option => option.value === trimmed.military_branch,
+  )?.value;
+  const educationLevel = EDUCATION_LEVELS.find(
+    option => option.value === trimmed.education_level,
+  )?.value;
+  if (!militaryBranch) {
     errors.military_branch = "Select a military branch.";
   }
-  if (
-    !EDUCATION_LEVELS.some(option => option.value === trimmed.education_level)
-  ) {
+  if (!educationLevel) {
     errors.education_level = "Select an education level.";
   }
   for (const field of ["service_start_date", "service_end_date"] as const) {
@@ -134,6 +181,7 @@ export function validateProfile(
       errors[field] = "Enter a valid date.";
     }
   }
+  // Valid YYYY-MM-DD strings sort chronologically, avoiding timezone conversion.
   if (
     !errors.service_start_date &&
     !errors.service_end_date &&
@@ -143,14 +191,16 @@ export function validateProfile(
     errors.service_end_date =
       "Service end date cannot be before the start date.";
   }
-  if (Object.keys(errors).length) return { success: false, errors };
+  if (!militaryBranch || !educationLevel || Object.keys(errors).length > 0) {
+    return { success: false, errors };
+  }
 
   return {
     success: true,
     data: {
       ...trimmed,
-      military_branch: trimmed.military_branch as MilitaryBranch,
-      education_level: trimmed.education_level as EducationLevel,
+      military_branch: militaryBranch,
+      education_level: educationLevel,
       service_end_date: trimmed.service_end_date || null,
     },
   };
