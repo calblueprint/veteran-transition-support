@@ -69,3 +69,40 @@ pnpm dev
 ```
 
 Then, navigate to http://localhost:3000 to launch the web application.
+
+### Participant profile (Sprint 1)
+
+![Participant profile with fictional test data](docs/participant-profile.png)
+
+Visit http://localhost:3000/profile to create or edit a participant profile.
+Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in
+`.env.local` using the project URL and public publishable/anon key. Never use a
+service-role key in a `NEXT_PUBLIC_` variable.
+
+The page uses the existing `public.participants` table. First name, last name,
+and email are included because the database requires them for an insert.
+Military branch and education options match the project's database enums.
+Service end date is optional for participants who are still serving; when
+provided, it must be on or after the start date.
+
+Until authentication is connected, every visit uses the shared test UUID
+`e591e956-fb53-41f2-9b28-fc7881ba6c56`, defined in
+`actions/supabase/queries/participants.ts`. The first save inserts that record;
+subsequent saves update only that record. Existing phone, resume, duplicate,
+and creation-date fields are preserved. This is a development-only identity:
+replace it with the authenticated participant ID and appropriate RLS policies
+before using the page with real participants. This change does not alter the
+database schema or access policies.
+
+To verify the flow:
+
+1. Fill out the profile using fictional test information and save.
+2. Confirm the row with the test UUID appears in the Supabase Table Editor.
+3. Change a field, save again, and reload. The edited value should remain and
+   there should still be only one row for that UUID.
+4. Try blank required fields, an invalid email, and an end date before the
+   start date. These should show validation errors without saving.
+
+Run `pnpm test` for validation tests and `pnpm pre-commit` for the repository's
+TypeScript, lint, and formatting checks. Resume upload and auth integration
+are deferred to later sprints.

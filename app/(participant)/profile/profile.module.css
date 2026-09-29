@@ -1,0 +1,133 @@
+.page {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 40px 20px 64px;
+  color: #172b3a;
+  background: #fff;
+  line-height: 1.5;
+}
+
+.header {
+  margin-bottom: 28px;
+}
+
+.header h1 {
+  margin: 8px 0;
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.eyebrow {
+  font-weight: 600;
+  color: #365d75;
+}
+
+.requiredNote {
+  margin-bottom: 20px;
+}
+
+.page fieldset {
+  min-width: 0;
+  margin-bottom: 24px;
+  padding: 20px;
+  border: 1px solid #b6c2cb;
+  border-radius: 8px;
+}
+
+.page legend {
+  padding: 0 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-weight: 600;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #738798;
+  border-radius: 4px;
+  color: #172b3a;
+  background: #fff;
+  font: inherit;
+  color-scheme: light;
+}
+
+.field [aria-invalid="true"] {
+  border-color: #a52020;
+}
+
+.page :is(input, select, button):focus-visible {
+  outline: 3px solid #2074a5;
+  outline-offset: 3px;
+}
+
+.page button {
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid #224e6b;
+  border-radius: 4px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveButton {
+  color: #fff;
+  background: #224e6b;
+}
+
+.page :disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.hint {
+  color: #465e6e;
+  font-size: 0.875rem;
+}
+
+.fieldError,
+.error {
+  color: #a52020;
+}
+
+.error {
+  margin-bottom: 16px;
+}
+
+.success {
+  color: #176336;
+}
+
+.success:not(:empty) {
+  margin-bottom: 16px;
+}
+
+@media (max-width: 540px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .page {
+    padding-top: 24px;
+  }
+}
