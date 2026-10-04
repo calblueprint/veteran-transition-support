@@ -18,6 +18,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // RESOLVED: kept HEAD (main) version with the normalizedEmail variable
       const normalizedEmail = email.trim().toLowerCase();
 
       const { error: authError } = await supabase.auth.signInWithPassword({
@@ -39,6 +40,7 @@ export default function LoginPage() {
         return;
       }
 
+      // RESOLVED: kept HEAD (main) redirect to /profile instead of "/"
       router.replace("/profile");
     } catch {
       setError("Unable to log in. Please try again.");

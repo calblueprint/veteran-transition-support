@@ -36,6 +36,7 @@ export default function SignUpPage() {
       const { data, error: authError } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
+        // RESOLVED: kept HEAD (main) emailRedirectTo
         options: { emailRedirectTo: `${window.location.origin}/profile` },
       });
 
@@ -57,6 +58,7 @@ export default function SignUpPage() {
           "If this email is eligible, a confirmation link will be sent.",
         );
       } else if (data.session) {
+        // RESOLVED: kept HEAD (main) redirect to /onboarding instead of "/"
         router.replace("/onboarding");
       } else {
         setMessage(
