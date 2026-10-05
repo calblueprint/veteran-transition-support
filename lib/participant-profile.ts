@@ -1,5 +1,5 @@
 /**
- * @fileoverview Defines the profile form's data contract and pure validation.
+ * @fileoverview Defines the profile form's data contract and validation rules.
  * This module has no React or Supabase dependencies so its rules can be tested
  * without a browser, credentials, or database writes.
  */
@@ -135,9 +135,14 @@ function isValidDate(value: string): boolean {
  * Trims input without mutating it and converts an empty end date to null.
  * Only editable fields are included in the result. These client-side checks
  * provide form feedback; database constraints and RLS enforce data access.
+ *
+ * @param currentDate Reference time for the inclusive service-date limit, using
+ *     the participant's local calendar date. Defaults to the time of validation;
+ *     tests can provide a fixed clock.
  */
 export function validateProfile(
   values: Readonly<ProfileFormValues>,
+  currentDate: Date = new Date(),
 ):
   | { success: true; data: ParticipantProfileInput }
   | { success: false; errors: ProfileErrors } {
@@ -176,9 +181,18 @@ export function validateProfile(
   if (!educationLevel) {
     errors.education_level = "Select an education level.";
   }
+  // Service dates are calendar dates. UTC conversion could allow tomorrow in
+  // western timezones or reject today in eastern timezones around midnight.
+  const today = [
+    String(currentDate.getFullYear()).padStart(4, "0"),
+    String(currentDate.getMonth() + 1).padStart(2, "0"),
+    String(currentDate.getDate()).padStart(2, "0"),
+  ].join("-");
   for (const field of ["service_start_date", "service_end_date"] as const) {
     if (trimmed[field] && !isValidDate(trimmed[field])) {
       errors[field] = "Enter a valid date.";
+    } else if (trimmed[field] > today) {
+      errors[field] = "Service date cannot be in the future.";
     }
   }
   // Valid YYYY-MM-DD strings sort chronologically, avoiding timezone conversion.

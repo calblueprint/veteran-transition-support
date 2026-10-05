@@ -5,6 +5,7 @@
  */
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { test } from "node:test";
 import {
   EMPTY_PROFILE,
@@ -107,6 +108,96 @@ test("a blank end date is saved as null for someone still serving", () => {
   assert.equal(result.success, true);
   assert.equal(result.data.service_end_date, null);
 });
+
+test("a future start date is rejected even when the end date is blank", () => {
+  const result = validateProfile(
+    { ...validProfile, service_start_date: "2026-10-05", service_end_date: "" },
+    new Date(2026, 9, 4, 12),
+  );
+  assert.equal(result.success, false);
+  assert.equal(
+    result.errors.service_start_date,
+    "Service date cannot be in the future.",
+  );
+  assert.equal(result.errors.service_end_date, undefined);
+});
+
+test("a future end date is rejected even when it follows a valid start date", () => {
+  const result = validateProfile(
+    { ...validProfile, service_end_date: "2026-10-05" },
+    new Date(2026, 9, 4, 12),
+  );
+  assert.equal(result.success, false);
+  assert.equal(
+    result.errors.service_end_date,
+    "Service date cannot be in the future.",
+  );
+  assert.equal(result.errors.service_start_date, undefined);
+});
+
+test("both future service dates receive their own error", () => {
+  const result = validateProfile(
+    {
+      ...validProfile,
+      service_start_date: "2026-10-05",
+      service_end_date: "2026-10-06",
+    },
+    new Date(2026, 9, 4, 12),
+  );
+  assert.equal(result.success, false);
+  assert.equal(
+    result.errors.service_start_date,
+    "Service date cannot be in the future.",
+  );
+  assert.equal(
+    result.errors.service_end_date,
+    "Service date cannot be in the future.",
+  );
+});
+
+test("today is allowed for either service date, including across a year boundary", () => {
+  for (const [currentDate, today] of [
+    [new Date(2026, 9, 4, 0, 1), "2026-10-04"],
+    [new Date(2027, 0, 1, 0, 1), "2027-01-01"],
+  ]) {
+    const result = validateProfile(
+      { ...validProfile, service_start_date: today, service_end_date: today },
+      currentDate,
+    );
+    assert.equal(result.success, true);
+  }
+});
+
+for (const { timezone, currentDate } of [
+  { timezone: "America/Los_Angeles", currentDate: "2026-10-05T06:30:00Z" },
+  { timezone: "Pacific/Kiritimati", currentDate: "2026-10-03T10:30:00Z" },
+]) {
+  test(`the date limit follows the local day in ${timezone}, not UTC`, () => {
+    // Isolate TZ in a child process so these checks do not alter other tests.
+    const moduleUrl = new URL("../lib/participant-profile.ts", import.meta.url);
+    execFileSync(
+      process.execPath,
+      [
+        "--experimental-strip-types",
+        "--input-type=module",
+        "--eval",
+        `
+          import assert from "node:assert/strict";
+          import { validateProfile } from ${JSON.stringify(moduleUrl.href)};
+          const values = ${JSON.stringify(validProfile)};
+          const clock = new Date(${JSON.stringify(currentDate)});
+          const today = validateProfile({ ...values, service_start_date: "2026-10-04", service_end_date: "2026-10-04" }, clock);
+          assert.equal(today.success, true);
+          const tomorrow = validateProfile({ ...values, service_start_date: "2026-10-05", service_end_date: "2026-10-05" }, clock);
+          assert.equal(tomorrow.success, false);
+          assert.equal(tomorrow.errors.service_start_date, "Service date cannot be in the future.");
+          assert.equal(tomorrow.errors.service_end_date, "Service date cannot be in the future.");
+        `,
+      ],
+      { env: { ...process.env, TZ: timezone }, stdio: "pipe" },
+    );
+  });
+}
 
 test("impossible dates are rejected rather than normalized by JavaScript", () => {
   for (const date of [
