@@ -18,8 +18,24 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // RESOLVED: kept HEAD (main) version with the normalizedEmail variable
       const normalizedEmail = email.trim().toLowerCase();
+
+      // RESOLVED: kept incoming commit's participants lookup (missing account vs invalid password)
+      const { data: existingUser, error: lookupError } = await supabase
+        .from("participants")
+        .select("id")
+        .eq("email", normalizedEmail)
+        .maybeSingle();
+
+      if (lookupError) {
+        setError("Unable to log in. Please try again.");
+        return;
+      }
+
+      if (!existingUser) {
+        setError("No account found with this email.");
+        return;
+      }
 
       const { error: authError } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
@@ -28,7 +44,7 @@ export default function LoginPage() {
 
       if (authError) {
         if (authError.code === "invalid_credentials") {
-          setError("Invalid email or password.");
+          setError("Invalid password.");
         } else if (authError.code === "email_not_confirmed") {
           setError("Please confirm your email before logging in.");
         } else if (authError.status === 429) {
@@ -40,7 +56,6 @@ export default function LoginPage() {
         return;
       }
 
-      // RESOLVED: kept HEAD (main) redirect to /profile instead of "/"
       router.replace("/profile");
     } catch {
       setError("Unable to log in. Please try again.");
