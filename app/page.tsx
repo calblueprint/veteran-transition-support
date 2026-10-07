@@ -1,29 +1,6 @@
-import { CSSProperties } from "react";
-import Image from "next/image";
-import BPLogo from "@/assets/images/bp-logo.png";
+import { redirect } from "next/navigation";
 
+/** The profile gate sends first-time participants to onboarding after authentication. */
 export default function Home() {
-  return (
-    <main style={mainStyles}>
-      <Image style={imageStyles} src={BPLogo} alt="Blueprint Logo" />
-      <p>VTS THE GOAT</p>
-    </main>
-  );
+  redirect("/profile");
 }
-
-// CSS styles
-
-const mainStyles: CSSProperties = {
-  width: "100%",
-  height: "100vh",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const imageStyles: CSSProperties = {
-  width: "80px",
-  height: "80px",
-  marginBottom: "0.5rem",
-};

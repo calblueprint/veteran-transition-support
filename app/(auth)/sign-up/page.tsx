@@ -36,6 +36,7 @@ export default function SignUpPage() {
       const { data, error: authError } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
+        options: { emailRedirectTo: `${window.location.origin}/profile` },
       });
 
       if (authError) {
@@ -56,7 +57,7 @@ export default function SignUpPage() {
           "If this email is eligible, a confirmation link will be sent.",
         );
       } else if (data.session) {
-        router.replace("/");
+        router.replace("/onboarding");
       } else {
         setMessage(
           "Sign-up request successful! Check your email to confirm your account.",
