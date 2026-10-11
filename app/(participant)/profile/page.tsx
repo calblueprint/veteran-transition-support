@@ -10,6 +10,7 @@ import {
   fetchParticipantProfile,
   saveParticipantProfile,
 } from "@/actions/supabase/queries/participants";
+import SignOutButton from "@/components/SignOutButton";
 import {
   EDUCATION_LEVELS,
   EMPTY_PROFILE,
@@ -148,6 +149,8 @@ export default function ProfilePage() {
         <p>
           Tell us about yourself, your military service, and your education.
         </p>
+
+        <SignOutButton />
       </header>
 
       {loading && <p role="status">Loading your profile…</p>}

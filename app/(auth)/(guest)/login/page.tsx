@@ -5,65 +5,69 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-export default function SignUpPage() {
+export default function LoginPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSignUp() {
+  async function handleLogin() {
     setError("");
-    setMessage("");
-
-    const normalizedEmail = email.trim().toLowerCase();
-
-    if (!normalizedEmail) {
-      setError("Please enter your email.");
-      return;
-    }
-
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
-
     setLoading(true);
 
     try {
-      const { data, error: authError } = await supabase.auth.signUp({
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const { error: authError } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password,
       });
 
       if (authError) {
-        if (authError.code === "user_already_exists") {
-          setError("This email is already registered. Please log in.");
-        } else if (authError.code === "weak_password") {
-          setError("Please choose a stronger password.");
+        if (authError.code === "invalid_credentials") {
+          try {
+            const response = await fetch("/api/auth/check-email", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                email: normalizedEmail,
+              }),
+            });
+
+            if (!response.ok) {
+              setError("Invalid email or password.");
+              return;
+            }
+
+            const result: { exists: boolean } = await response.json();
+
+            if (result.exists) {
+              setError("Invalid password.");
+            } else {
+              setError("No account found with this email.");
+            }
+          } catch {
+            setError("Invalid email or password.");
+          }
+        } else if (authError.code === "email_not_confirmed") {
+          setError("Please confirm your email before logging in.");
         } else if (authError.status === 429) {
           setError("Too many attempts. Please try again later.");
         } else {
           setError(authError.message);
         }
+
         return;
       }
 
-      if (data.user?.identities?.length === 0) {
-        setMessage(
-          "If this email is eligible, a confirmation link will be sent.",
-        );
-      } else if (data.session) {
-        router.replace("/");
-      } else {
-        setMessage(
-          "Sign-up request successful! Check your email to confirm your account.",
-        );
-      }
+      router.replace("/profile");
+      router.refresh();
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError("Unable to log in. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -77,13 +81,13 @@ export default function SignUpPage() {
         padding: 24,
       }}
     >
-      <h1>Create an Account</h1>
-      <p>Enter your email and password to sign up.</p>
+      <h1>Log In</h1>
+      <p>Welcome back! Enter your credentials.</p>
 
       <form
         onSubmit={event => {
           event.preventDefault();
-          void handleSignUp();
+          void handleLogin();
         }}
       >
         <div style={{ marginBottom: 16 }}>
@@ -97,7 +101,11 @@ export default function SignUpPage() {
             value={email}
             onChange={event => setEmail(event.target.value)}
             required
-            style={{ display: "block", width: "100%", padding: 10 }}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: 10,
+            }}
           />
         </div>
 
@@ -107,15 +115,22 @@ export default function SignUpPage() {
             id="password"
             name="password"
             type="password"
-            placeholder="Create a password"
-            autoComplete="new-password"
+            placeholder="Enter your password"
+            autoComplete="current-password"
             value={password}
             onChange={event => setPassword(event.target.value)}
-            minLength={8}
             required
-            style={{ display: "block", width: "100%", padding: 10 }}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: 10,
+            }}
           />
         </div>
+
+        <p>
+          <Link href="/forgot-password">Forgot password?</Link>
+        </p>
 
         {error && (
           <p role="alert" style={{ color: "crimson" }}>
@@ -123,19 +138,13 @@ export default function SignUpPage() {
           </p>
         )}
 
-        {message && (
-          <p role="status" style={{ color: "green" }}>
-            {message}
-          </p>
-        )}
-
         <button type="submit" disabled={loading}>
-          {loading ? "Creating account..." : "Sign Up"}
+          {loading ? "Logging in..." : "Log In"}
         </button>
       </form>
 
       <p>
-        Already have an account? <Link href="/login">Log in</Link>
+        Don&apos;t have an account? <Link href="/sign-up">Sign up</Link>
       </p>
     </main>
   );
