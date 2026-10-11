@@ -3,7 +3,6 @@ import { Oswald } from "next/font/google";
 import { ProfilePageContent } from "@/components/participant/profile-page-content";
 import styles from "./profile-page.module.css";
 
-// RESOLVED: kept incoming PR 33 version; main's ProfileEditor is replaced by ProfilePageContent
 const heading = Oswald({
   subsets: ["latin"],
   weight: "700",
