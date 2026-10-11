@@ -33,10 +33,36 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
+      const response = await fetch("/api/auth/check-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: normalizedEmail,
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          setError("Too many attempts. Please try again later.");
+        } else {
+          setError("Unable to check email. Please try again.");
+        }
+
+        return;
+      }
+
+      const result: { exists: boolean } = await response.json();
+
+      if (result.exists) {
+        setError("An account with this email already exists. Please log in.");
+        return;
+      }
+
       const { data, error: authError } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
-        // RESOLVED: kept HEAD (main) emailRedirectTo
         options: { emailRedirectTo: `${window.location.origin}/profile` },
       });
 
@@ -50,6 +76,7 @@ export default function SignUpPage() {
         } else {
           setError(authError.message);
         }
+
         return;
       }
 
@@ -58,8 +85,9 @@ export default function SignUpPage() {
           "If this email is eligible, a confirmation link will be sent.",
         );
       } else if (data.session) {
-        // RESOLVED: kept HEAD (main) redirect to /onboarding instead of "/"
+        // RESOLVED: kept HEAD (main) redirect to /onboarding, plus router.refresh() from this commit
         router.replace("/onboarding");
+        router.refresh();
       } else {
         setMessage(
           "Sign-up request successful! Check your email to confirm your account.",
@@ -100,7 +128,11 @@ export default function SignUpPage() {
             value={email}
             onChange={event => setEmail(event.target.value)}
             required
-            style={{ display: "block", width: "100%", padding: 10 }}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: 10,
+            }}
           />
         </div>
 
@@ -116,7 +148,11 @@ export default function SignUpPage() {
             onChange={event => setPassword(event.target.value)}
             minLength={8}
             required
-            style={{ display: "block", width: "100%", padding: 10 }}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: 10,
+            }}
           />
         </div>
 

@@ -20,23 +20,7 @@ export default function LoginPage() {
     try {
       const normalizedEmail = email.trim().toLowerCase();
 
-      // RESOLVED: kept incoming commit's participants lookup (missing account vs invalid password)
-      const { data: existingUser, error: lookupError } = await supabase
-        .from("participants")
-        .select("id")
-        .eq("email", normalizedEmail)
-        .maybeSingle();
-
-      if (lookupError) {
-        setError("Unable to log in. Please try again.");
-        return;
-      }
-
-      if (!existingUser) {
-        setError("No account found with this email.");
-        return;
-      }
-
+      // RESOLVED: removed the client-side participants lookup (the check-email API route below replaces it)
       const { error: authError } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password,
@@ -44,7 +28,32 @@ export default function LoginPage() {
 
       if (authError) {
         if (authError.code === "invalid_credentials") {
-          setError("Invalid password.");
+          try {
+            const response = await fetch("/api/auth/check-email", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                email: normalizedEmail,
+              }),
+            });
+
+            if (!response.ok) {
+              setError("Invalid email or password.");
+              return;
+            }
+
+            const result: { exists: boolean } = await response.json();
+
+            if (result.exists) {
+              setError("Invalid password.");
+            } else {
+              setError("No account found with this email.");
+            }
+          } catch {
+            setError("Invalid email or password.");
+          }
         } else if (authError.code === "email_not_confirmed") {
           setError("Please confirm your email before logging in.");
         } else if (authError.status === 429) {
@@ -57,6 +66,8 @@ export default function LoginPage() {
       }
 
       router.replace("/profile");
+      // RESOLVED: kept router.refresh() so server components see the new session
+      router.refresh();
     } catch {
       setError("Unable to log in. Please try again.");
     } finally {
@@ -92,7 +103,11 @@ export default function LoginPage() {
             value={email}
             onChange={event => setEmail(event.target.value)}
             required
-            style={{ display: "block", width: "100%", padding: 10 }}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: 10,
+            }}
           />
         </div>
 
@@ -107,9 +122,17 @@ export default function LoginPage() {
             value={password}
             onChange={event => setPassword(event.target.value)}
             required
-            style={{ display: "block", width: "100%", padding: 10 }}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: 10,
+            }}
           />
         </div>
+
+        <p>
+          <Link href="/forgot-password">Forgot password?</Link>
+        </p>
 
         {error && (
           <p role="alert" style={{ color: "crimson" }}>
