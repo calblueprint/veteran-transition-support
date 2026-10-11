@@ -17,6 +17,20 @@ export async function fetchWorkshops(): Promise<Workshop[]> {
   return data;
 }
 
+export async function fetchWorkshop(id: string): Promise<Workshop> {
+  const { data, error } = await supabase
+    .from("workshops")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    throw new Error(`Could not load workshop: ${error.message}`);
+  }
+
+  return data;
+}
+
 export async function createWorkshop(
   workshop: CreateWorkshopInput,
 ): Promise<void> {
@@ -24,5 +38,34 @@ export async function createWorkshop(
 
   if (error) {
     throw new Error(`Could not create workshop: ${error.message}`);
+  }
+}
+
+export async function updateWorkshop(
+  id: string,
+  workshop: CreateWorkshopInput,
+): Promise<void> {
+  const { error } = await supabase
+    .from("workshops")
+    .update(workshop)
+    .eq("id", id)
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`Could not update workshop: ${error.message}`);
+  }
+}
+
+export async function deleteWorkshop(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("workshops")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`Could not delete workshop: ${error.message}`);
   }
 }
