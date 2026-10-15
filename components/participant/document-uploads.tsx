@@ -12,6 +12,11 @@ import styles from "@/app/(participant)/profile/profile.module.css";
 import { validateDocument } from "@/lib/participant-data";
 import { UnverifiedBadge } from "./profile-fields";
 
+const DOCUMENT_TITLES: Record<DocumentKind, string> = {
+  resumes: "Resumes",
+  documents: "Supporting documents",
+};
+
 /** Uploads are saved independently so profile edits are never lost on a file error. */
 export function DocumentUploads({
   userId,
@@ -31,7 +36,7 @@ export function DocumentUploads({
   const [attempt, setAttempt] = useState(0);
   const pending = useRef(false);
   const isResume = kind === "resumes";
-  const title = isResume ? "Resumes" : "Supporting documents";
+  const title = DOCUMENT_TITLES[kind];
 
   useEffect(() => {
     let active = true;

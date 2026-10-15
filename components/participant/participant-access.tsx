@@ -7,6 +7,7 @@ import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchParticipantProfile } from "@/actions/supabase/queries/participants";
 import { supabase } from "@/lib/supabase";
+import styles from "./participant-access.module.css";
 
 /**
  * Routes signed-out users to login and missing profiles to onboarding.
@@ -84,7 +85,13 @@ export function ParticipantAccess({
         </button>
       </div>
     );
-  if (!state) return <p role="status">Loading your account…</p>;
+  if (!state)
+    return (
+      <p role="status" className={styles.loading}>
+        <span className={styles.spinner} aria-hidden="true" />
+        Loading your account…
+      </p>
+    );
   return (
     <Fragment key={state.user.id}>
       {children(state.user, state.profile)}
