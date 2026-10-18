@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "@/styles/global.css";
+import RoleNavigation from "@/components/RoleNavigation";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 // font definitions
@@ -23,7 +24,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={sans.className}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <RoleNavigation />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
