@@ -13,6 +13,11 @@ export async function GET(request: NextRequest) {
   const safeNext =
     next.startsWith("/") && !next.startsWith("//") ? next : "/profile";
 
+  const resolvedUrl = new URL(safeNext, origin);
+
+  const redirectUrl =
+    resolvedUrl.origin === origin ? resolvedUrl : new URL("/profile", origin);
+
   if (tokenHash && (type === "email" || type === "recovery")) {
     const supabase = await createClient();
 
@@ -22,7 +27,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!error) {
-      return NextResponse.redirect(new URL(safeNext, origin));
+      return NextResponse.redirect(redirectUrl);
     }
   }
 
