@@ -13,6 +13,14 @@ export type ParticipantDocument = {
   path: string;
   createdAt: string;
 };
+/** The status values stored in id_verifications.verification_status. */
+export type IdVerificationStatus =
+  "pending" | "verified" | "failed" | "manual_review";
+// ID photos live in their own folder of the same private bucket, so they never
+// appear in the participant's resume/document lists.
+const ID_FOLDER = "id-verification";
+// One of the values of the document_type enum in the database.
+const ID_DOCUMENT_TYPE = "military_id";
 const MIME_TYPES: Record<string, string> = {
   pdf: "application/pdf",
   doc: "application/msword",
@@ -66,6 +74,16 @@ export function validateDocument(
   if (file.type && file.type !== MIME_TYPES[extension])
     return "The file type does not match its extension.";
   return null;
+}
+
+/** An ID must be a photo, so only PNG or JPEG passes (plus the shared size/type checks). */
+export function validateIdPhoto(
+  file: Pick<File, "name" | "size" | "type">,
+): string | null {
+  const extension = file.name.split(".").at(-1)?.toLowerCase() ?? "";
+  if (!["png", "jpg", "jpeg"].includes(extension))
+    return "Choose a PNG or JPEG photo of your ID.";
+  return validateDocument(file, "documents");
 }
 
 /** Removes path separators and control characters while retaining a readable filename. */
@@ -210,6 +228,51 @@ export function createParticipantData(client: SupabaseClient) {
     return data;
   }
 
+  /** Uploads an ID photo, then records a pending id_verifications row. document_image_url holds the file's
+   * path in the private bucket (not a public URL). */
+  async function submitIdVerification(
+    userId: string,
+    file: File,
+  ): Promise<void> {
+    const validationError = validateIdPhoto(file);
+    if (validationError) throw new Error(validationError);
+    await requireUser(userId);
+    const name = documentFilename(file.name);
+    const path = `${userId}/${ID_FOLDER}/${crypto.randomUUID()}--${name}`;
+    const extension = name.split(".").at(-1)!.toLowerCase();
+    const { error: uploadError } = await client.storage
+      .from(DOCUMENT_BUCKET)
+      .upload(path, file, {
+        contentType: MIME_TYPES[extension],
+        upsert: false,
+      });
+    if (uploadError) throw uploadError;
+    // If this insert fails, the private file is simply unused; a retry uploads a new one.
+    const { error } = await client.from("id_verifications").insert({
+      participant_id: userId,
+      verification_status: "pending",
+      document_type: ID_DOCUMENT_TYPE,
+      document_image_url: path,
+    });
+    if (error) throw error;
+  }
+
+  /** Returns the status of the participant's most recent submission, or null if none. */
+  async function fetchLatestIdVerification(
+    userId: string,
+  ): Promise<IdVerificationStatus | null> {
+    await requireUser(userId);
+    const { data, error } = await client
+      .from("id_verifications")
+      .select("verification_status")
+      .eq("participant_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ verification_status: IdVerificationStatus }>();
+    if (error) throw error;
+    return data?.verification_status ?? null;
+  }
+
   return {
     fetchProfile,
     createProfile,
@@ -217,5 +280,7 @@ export function createParticipantData(client: SupabaseClient) {
     listDocuments,
     uploadDocument,
     downloadDocument,
+    submitIdVerification,
+    fetchLatestIdVerification,
   };
 }
