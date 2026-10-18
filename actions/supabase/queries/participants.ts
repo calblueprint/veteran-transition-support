@@ -8,4 +8,6 @@ export const {
   listDocuments,
   uploadDocument,
   downloadDocument,
+  submitIdVerification,
+  fetchLatestIdVerification,
 } = createParticipantData(supabase);
