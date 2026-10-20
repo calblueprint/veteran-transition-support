@@ -2,6 +2,7 @@
 
 import type { Workshop } from "@/types/workshop";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { fetchWorkshops } from "@/actions/supabase/queries/workshops";
 
 export default function WorkshopsPage() {
@@ -62,6 +63,7 @@ export default function WorkshopsPage() {
               <th scope="col">End date</th>
               <th scope="col">Capacity</th>
               <th scope="col">Location</th>
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -72,6 +74,9 @@ export default function WorkshopsPage() {
                 <td>{workshop.end_date ?? "Not set"}</td>
                 <td>{workshop.capacity ?? "Not set"}</td>
                 <td>{workshop.location ?? "Not set"}</td>
+                <td>
+                  <Link href={`/workshops/${workshop.id}/edit`}>Edit</Link>
+                </td>
               </tr>
             ))}
           </tbody>
