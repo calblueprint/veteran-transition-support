@@ -1,46 +1,58 @@
 import type { Workshop } from "@/types/workshop";
+import { workshopErrorMessage } from "@/lib/workshop-errors";
 import supabase from "../client";
 
-export async function registerForWorkshop(workshopId: string): Promise<void> {
+async function getCurrentUser(loginMessage?: string) {
   const {
     data: { user },
-    error: authError,
+    error,
   } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    throw new Error("Please log in to register for a workshop.");
+  if (error && error.name !== "AuthSessionMissingError") {
+    throw new Error("Could not check your login status. Please try again.");
   }
+  if ((!user || error) && loginMessage) throw new Error(loginMessage);
+  return error ? null : user;
+}
 
-  const { error } = await supabase
-    .from("registrations")
-    .insert({
-      participant_id: user.id,
-      workshop_id: workshopId,
-    })
+export async function registerForWorkshop(workshopId: string): Promise<void> {
+  const user = await getCurrentUser(
+    "Please log in to register for a workshop.",
+  );
+  if (!user) return;
+
+  const { data: participant, error: profileError } = await supabase
+    .from("participants")
     .select("id")
-    .single();
+    .eq("id", user.id)
+    .maybeSingle();
+  if (profileError)
+    throw new Error(
+      "Could not check your participant profile. Please try again.",
+    );
+  if (!participant)
+    throw new Error(
+      "Please complete your participant profile before registering for a workshop.",
+    );
 
+  // Only active registrations are unique; cancelled history is preserved.
+  const { error } = await supabase.from("registrations").insert({
+    participant_id: user.id,
+    workshop_id: workshopId,
+  });
   if (error) {
-    throw new Error(`Could not register for workshop: ${error.message}`);
+    throw new Error(
+      workshopErrorMessage(
+        error,
+        "Could not register for workshop. Please try again.",
+      ),
+    );
   }
 }
 
 export async function isRegisteredForWorkshop(
   workshopId: string,
 ): Promise<boolean> {
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError) {
-    if (authError.name === "AuthSessionMissingError") {
-      return false;
-    }
-
-    throw new Error("Could not check your login status. Please try again.");
-  }
-
+  const user = await getCurrentUser();
   if (!user) return false;
 
   const { data, error } = await supabase
@@ -48,36 +60,25 @@ export async function isRegisteredForWorkshop(
     .select("id")
     .eq("participant_id", user.id)
     .eq("workshop_id", workshopId)
+    .or("attendance_status.is.null,attendance_status.neq.cancelled")
     .limit(1);
-
-  if (error) {
-    throw new Error(`Could not check registration: ${error.message}`);
-  }
-
+  if (error) throw new Error("Could not check registration. Please try again.");
   return data.length > 0;
 }
 
 export async function fetchMyWorkshops(): Promise<Workshop[]> {
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    throw new Error("Please log in to view your registered workshops.");
-  }
-
+  const user = await getCurrentUser(
+    "Please log in to view your registered workshops.",
+  );
+  if (!user) return [];
   const { data, error } = await supabase
     .from("registrations")
     .select("workshop:workshops(*)")
     .eq("participant_id", user.id)
-    .neq("attendance_status", "cancelled")
+    .or("attendance_status.is.null,attendance_status.neq.cancelled")
     .order("registration_date", { ascending: false })
     .returns<{ workshop: Workshop | null }[]>();
-
-  if (error) {
-    throw new Error(`Could not load your workshops: ${error.message}`);
-  }
-
+  if (error)
+    throw new Error("Could not load your workshops. Please try again.");
   return data.flatMap(row => (row.workshop ? [row.workshop] : []));
 }

@@ -7,13 +7,19 @@ import { useParams, useRouter } from "next/navigation";
 import {
   deleteWorkshop,
   fetchWorkshop,
+  fetchWorkshopRegistrationCount,
   updateWorkshop,
 } from "@/actions/supabase/queries/workshops";
+import {
+  MAX_WORKSHOP_CAPACITY,
+  validateWorkshopForm,
+} from "@/lib/workshop-form";
 
 export default function EditWorkshopPage() {
   const { id } = useParams<{ id: string }>();
 
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
+  const [registeredCount, setRegisteredCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,9 +40,11 @@ export default function EditWorkshopPage() {
 
       try {
         const data = await fetchWorkshop(id);
+        const count = data ? await fetchWorkshopRegistrationCount(id) : 0;
 
         if (!ignore) {
           setWorkshop(data);
+          setRegisteredCount(count);
         }
       } catch (err) {
         if (!ignore) {
@@ -62,48 +70,16 @@ export default function EditWorkshopPage() {
     event.preventDefault();
     setSaveError(null);
 
-    const formData = new FormData(event.currentTarget);
-
-    const name = String(formData.get("name") ?? "").trim();
-    const description = String(formData.get("description") ?? "").trim();
-    const startDate = String(formData.get("start_date") ?? "");
-    const endDate = String(formData.get("end_date") ?? "");
-    const capacityText = String(formData.get("capacity") ?? "").trim();
-    const location = String(formData.get("location") ?? "").trim();
-
-    if (!name) {
-      setSaveError("Please enter a workshop name.");
-      return;
-    }
-
-    if (startDate && endDate && endDate < startDate) {
-      setSaveError("End date cannot be before start date.");
-      return;
-    }
-
-    const capacity = capacityText === "" ? null : Number(capacityText);
-
-    if (
-      capacity !== null &&
-      (!Number.isInteger(capacity) || capacity < 0 || capacity > 2147483647)
-    ) {
-      setSaveError(
-        "Capacity must be a whole number between 0 and 2,147,483,647.",
-      );
-      return;
-    }
-
     setSubmitting(true);
 
     try {
-      await updateWorkshop(id, {
-        name,
-        description: description || null,
-        start_date: startDate || null,
-        end_date: endDate || null,
-        capacity,
-        location: location || null,
-      });
+      await updateWorkshop(
+        id,
+        validateWorkshopForm(
+          new FormData(event.currentTarget),
+          registeredCount,
+        ),
+      );
     } catch (err) {
       setSaveError(
         err instanceof Error ? err.message : "Could not update workshop.",
@@ -119,7 +95,7 @@ export default function EditWorkshopPage() {
     if (!workshop || deleting || submitting) return;
 
     const confirmed = window.confirm(
-      `Delete "${workshop.name}"? This action cannot be undone.`,
+      `Delete "${workshop.name}"? This action cannot be undone. Workshops with registration records (including cancelled registrations) cannot be deleted.`,
     );
 
     if (!confirmed) return;
@@ -155,6 +131,15 @@ export default function EditWorkshopPage() {
   return (
     <main>
       <h1>Edit workshop</h1>
+
+      <p>
+        {registeredCount} active registrations. Capacity cannot be lower than
+        this count.
+      </p>
+      <p>
+        Leave capacity blank for unlimited spots. Set it to 0 to close
+        registration.
+      </p>
 
       <form onSubmit={handleSubmit}>
         <fieldset disabled={submitting || deleting}>
@@ -206,7 +191,7 @@ export default function EditWorkshopPage() {
               type="number"
               step="1"
               min="0"
-              max="2147483647"
+              max={MAX_WORKSHOP_CAPACITY}
               defaultValue={workshop.capacity ?? ""}
             />
           </div>

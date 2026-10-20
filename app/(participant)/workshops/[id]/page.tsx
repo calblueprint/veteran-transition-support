@@ -7,7 +7,10 @@ import {
   isRegisteredForWorkshop,
   registerForWorkshop,
 } from "@/actions/supabase/queries/registrations";
-import { fetchWorkshop } from "@/actions/supabase/queries/workshops";
+import {
+  fetchWorkshop,
+  fetchWorkshopRegistrationCount,
+} from "@/actions/supabase/queries/workshops";
 
 export default function WorkshopDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +22,7 @@ export default function WorkshopDetailsPage() {
   const [registrationError, setRegistrationError] = useState<string | null>(
     null,
   );
+  const [registeredCount, setRegisteredCount] = useState(0);
   const [registered, setRegistered] = useState(false);
 
   useEffect(() => {
@@ -32,14 +36,19 @@ export default function WorkshopDetailsPage() {
       setRegistrationError(null);
 
       try {
-        const [data, alreadyRegistered] = await Promise.all([
-          fetchWorkshop(id),
-          isRegisteredForWorkshop(id),
-        ]);
+        const data = await fetchWorkshop(id);
+        // Invalid or missing workshops must not trigger registration queries.
+        const [alreadyRegistered, count] = data
+          ? await Promise.all([
+              isRegisteredForWorkshop(id),
+              fetchWorkshopRegistrationCount(id),
+            ])
+          : ([false, 0] as const);
 
         if (!ignore) {
           setWorkshop(data);
           setRegistered(alreadyRegistered);
+          setRegisteredCount(count);
         }
       } catch (err) {
         if (!ignore) {
@@ -62,7 +71,13 @@ export default function WorkshopDetailsPage() {
   }, [id]);
 
   async function handleRegister() {
-    if (registering || registered) return;
+    if (
+      registering ||
+      registered ||
+      !workshop ||
+      (workshop.capacity !== null && registeredCount >= workshop.capacity)
+    )
+      return;
 
     setRegistering(true);
     setRegistrationError(null);
@@ -70,11 +85,24 @@ export default function WorkshopDetailsPage() {
     try {
       await registerForWorkshop(id);
       setRegistered(true);
+      setRegisteredCount(count => count + 1);
     } catch (err) {
       setRegistrationError(
         err instanceof Error ? err.message : "Could not register for workshop.",
       );
     } finally {
+      // Refresh capacity after success or a race for the last available spot.
+      try {
+        const latest = await fetchWorkshop(id);
+        const count = latest ? await fetchWorkshopRegistrationCount(id) : 0;
+        setWorkshop(latest);
+        setRegisteredCount(count);
+        setRegistered(latest ? await isRegisteredForWorkshop(id) : false);
+      } catch {
+        setError(
+          "Could not refresh workshop availability. Please reload the page.",
+        );
+      }
       setRegistering(false);
     }
   }
@@ -90,6 +118,12 @@ export default function WorkshopDetailsPage() {
   if (!workshop) {
     return <p>Workshop not found.</p>;
   }
+
+  const remainingSpots =
+    workshop.capacity === null
+      ? null
+      : Math.max(0, workshop.capacity - registeredCount);
+  const full = remainingSpots === 0;
 
   return (
     <main>
@@ -108,7 +142,9 @@ export default function WorkshopDetailsPage() {
         <dd>{workshop.location ?? "Not set"}</dd>
 
         <dt>Capacity</dt>
-        <dd>{workshop.capacity ?? "Not set"}</dd>
+        <dd>{workshop.capacity ?? "Unlimited"}</dd>
+        <dt>Remaining spots</dt>
+        <dd>{remainingSpots ?? "Unlimited"}</dd>
       </dl>
 
       {registrationError && <p role="alert">{registrationError}</p>}
@@ -116,8 +152,12 @@ export default function WorkshopDetailsPage() {
       {registered ? (
         <p role="status">You’re registered for this workshop.</p>
       ) : (
-        <button type="button" onClick={handleRegister} disabled={registering}>
-          {registering ? "Registering..." : "Register"}
+        <button
+          type="button"
+          onClick={handleRegister}
+          disabled={registering || full}
+        >
+          {registering ? "Registering..." : full ? "Workshop full" : "Register"}
         </button>
       )}
     </main>
