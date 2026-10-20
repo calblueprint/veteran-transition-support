@@ -33,33 +33,6 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/check-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: normalizedEmail,
-        }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 429) {
-          setError("Too many attempts. Please try again later.");
-        } else {
-          setError("Unable to check email. Please try again.");
-        }
-
-        return;
-      }
-
-      const result: { exists: boolean } = await response.json();
-
-      if (result.exists) {
-        setError("An account with this email already exists. Please log in.");
-        return;
-      }
-
       const { data, error: authError } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
@@ -67,7 +40,7 @@ export default function SignUpPage() {
 
       if (authError) {
         if (authError.code === "user_already_exists") {
-          setError("This email is already registered. Please log in.");
+          setMessage("Check your email to continue.");
         } else if (authError.code === "weak_password") {
           setError("Please choose a stronger password.");
         } else if (authError.status === 429) {
@@ -80,16 +53,12 @@ export default function SignUpPage() {
       }
 
       if (data.user?.identities?.length === 0) {
-        setMessage(
-          "If this email is eligible, a confirmation link will be sent.",
-        );
+        setMessage("Check your email to continue.");
       } else if (data.session) {
         router.replace("/profile");
         router.refresh();
       } else {
-        setMessage(
-          "Sign-up request successful! Check your email to confirm your account.",
-        );
+        setMessage("Check your email to continue.");
       }
     } catch {
       setError("Something went wrong. Please try again.");
