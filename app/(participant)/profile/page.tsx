@@ -10,6 +10,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveParticipantProfile } from "@/actions/supabase/queries/participants";
 import { DocumentUploads } from "@/components/participant/document-uploads";
+import { IdVerification } from "@/components/participant/id-verification";
 import { ParticipantAccess } from "@/components/participant/participant-access";
 import { Field, PersonalFields } from "@/components/participant/profile-fields";
 import {
@@ -34,7 +35,6 @@ function ProfileEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [verificationMessage, setVerificationMessage] = useState("");
   const pending = useRef(false);
   const unverified = !profile.verification_status;
 
@@ -127,17 +127,7 @@ function ProfileEditor({
             Military details, education, employment, and files are self-reported
             and remain unverified.
           </p>
-          <button
-            type="button"
-            onClick={() =>
-              setVerificationMessage(
-                "Verification is not available yet. Your profile remains unverified; no verification request has been submitted.",
-              )
-            }
-          >
-            Verify
-          </button>
-          <p role="status">{verificationMessage}</p>
+          <IdVerification userId={profile.id} />
         </section>
       )}
       <form onSubmit={submit} noValidate>

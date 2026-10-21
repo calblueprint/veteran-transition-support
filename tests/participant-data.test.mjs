@@ -7,6 +7,7 @@ import {
   documentFilename,
   MAX_DOCUMENT_BYTES,
   validateDocument,
+  validateIdPhoto,
 } from "../lib/participant-data.ts";
 
 const userId = "11111111-1111-4111-8111-111111111111";
@@ -254,4 +255,58 @@ test("download rejects another user's path before accessing storage", async () =
     /does not belong/,
   );
   assert.equal(requests.length, 0);
+});
+
+test("ID verification uploads to the private ID folder, then inserts a pending row", async () => {
+  const { api, requests } = fixture(() => ({ body: { Key: "saved" } }));
+  const photo = new File(["png"], "My ID.png", { type: "image/png" });
+  await api.submitIdVerification(userId, photo);
+  assert.equal(requests.length, 2);
+  assert.equal(requests[0].method, "POST");
+  assert.match(
+    requests[0].url,
+    new RegExp(
+      `/storage/v1/object/${DOCUMENT_BUCKET}/${userId}/id-verification/[0-9a-f-]{36}--My_ID.png$`,
+    ),
+  );
+  assert.equal(requests[1].method, "POST");
+  assert.match(requests[1].url, /\/rest\/v1\/id_verifications$/);
+  assert.equal(requests[1].body.participant_id, userId);
+  assert.equal(requests[1].body.verification_status, "pending");
+  assert.ok(requests[0].url.includes(requests[1].body.document_image_url));
+});
+
+test("ID verification rejects non-image files and failed uploads without a database row", async () => {
+  assert.match(
+    validateIdPhoto({ name: "id.pdf", size: 10, type: "application/pdf" }),
+    /PNG or JPEG/,
+  );
+  assert.equal(
+    validateIdPhoto({ name: "id.jpg", size: 10, type: "image/jpeg" }),
+    null,
+  );
+  const { api, requests } = fixture(() => ({
+    status: 403,
+    body: { message: "Access denied" },
+  }));
+  await assert.rejects(
+    api.submitIdVerification(
+      userId,
+      new File(["png"], "id.png", { type: "image/png" }),
+    ),
+  );
+  assert.equal(requests.length, 1);
+  assert.ok(requests[0].url.includes("/storage/v1/object/"));
+});
+
+test("latest ID verification status is read for the signed-in participant, newest first", async () => {
+  const { api, requests } = fixture(() => ({
+    body: { verification_status: "pending" },
+  }));
+  assert.equal(await api.fetchLatestIdVerification(userId), "pending");
+  assert.ok(requests[0].url.includes(`participant_id=eq.${userId}`));
+  assert.ok(requests[0].url.includes("order=created_at.desc"));
+  assert.ok(requests[0].url.includes("limit=1"));
+  const none = fixture(() => ({ status: 406, body: { code: "PGRST116" } }));
+  await assert.rejects(none.api.fetchLatestIdVerification(userId));
 });
