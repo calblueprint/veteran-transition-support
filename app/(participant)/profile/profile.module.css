@@ -131,3 +131,99 @@
     padding-top: 24px;
   }
 }
+
+.field textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #738798;
+  border-radius: 4px;
+  color: #172b3a;
+  background: #fff;
+  font: inherit;
+  resize: vertical;
+}
+
+.page textarea:focus-visible,
+.page a:focus-visible {
+  outline: 3px solid #2074a5;
+  outline-offset: 3px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid #a37421;
+  border-radius: 4px;
+  background: #fff4d4;
+  color: #684506;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.accountBar,
+.fileList li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.verification {
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid #a37421;
+  border-radius: 8px;
+}
+
+.verification p + button,
+.verification button + p {
+  margin-top: 12px;
+}
+
+.secondaryEmail {
+  margin-top: 20px;
+}
+
+.historyFields {
+  display: grid;
+  gap: 20px;
+}
+
+.documents {
+  margin-top: 40px;
+}
+
+.uploadSection {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid #b6c2cb;
+  border-radius: 8px;
+}
+
+.uploadSection h3 {
+  margin-bottom: 8px;
+}
+
+.fileInput {
+  display: block;
+  max-width: 100%;
+  margin: 12px 0;
+}
+
+.fileList {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+
+.fileList li {
+  padding: 12px 0;
+  border-bottom: 1px solid #d9e1e6;
+}
+
+.fileList span {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
