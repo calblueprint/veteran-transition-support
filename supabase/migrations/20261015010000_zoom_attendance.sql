@@ -130,12 +130,23 @@ begin
     select array_agg(r.id order by r.id) into registration_ids
     from public.registrations r join public.participants p on p.id = r.participant_id
     where r.workshop_id = p_workshop_id
-      and r.attendance_status::text <> 'cancelled'
-      and lower(btrim(p.email)) = attendance.email;
+      and r.attendance_status::text is distinct from 'cancelled'
+      and attendance.email in (lower(btrim(p.email)), lower(btrim(p.secondary_email)));
 
     if coalesce(cardinality(registration_ids), 0) = 0 then
       unmatched := unmatched || jsonb_build_array(attendance.email);
     elsif cardinality(registration_ids) > 1 then
+      ambiguous := ambiguous || jsonb_build_array(attendance.email);
+    elsif exists (
+      -- Email-level totals cannot safely combine overlapping visits across aliases.
+      -- Flag every affected address before writing, independent of report order.
+      select 1 from jsonb_array_elements(p_attendance) item
+      join public.participants p on lower(btrim(item->>'email')) in
+        (lower(btrim(p.email)), lower(btrim(p.secondary_email)))
+      join public.registrations r on r.participant_id = p.id
+      where r.id = registration_ids[1]
+        and lower(btrim(item->>'email')) <> attendance.email
+    ) then
       ambiguous := ambiguous || jsonb_build_array(attendance.email);
     else
       if p_apply then
@@ -162,5 +173,70 @@ $$;
 
 revoke execute on function public.sync_zoom_attendance(uuid, text, jsonb, boolean) from public, anon, authenticated;
 grant execute on function public.sync_zoom_attendance(uuid, text, jsonb, boolean) to service_role;
+
+-- Correct a mistaken import without bypassing the one-instance guard or
+-- leaving registrations absent from the replacement report with stale minutes.
+create function public.reset_zoom_attendance(
+  p_workshop_id uuid,
+  p_meeting_uuid text,
+  p_apply boolean default false
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  workshop_name text;
+  registrations jsonb;
+begin
+  if p_meeting_uuid is null or btrim(p_meeting_uuid) = ''
+    or p_meeting_uuid <> btrim(p_meeting_uuid) or p_meeting_uuid ~ '^[0-9]+$' then
+    raise exception 'The exact stored Zoom meeting instance UUID is required.';
+  end if;
+
+  -- Use the same lock order as sync so a reset cannot race an import.
+  select w.name into workshop_name from public.workshops w
+    where w.id = p_workshop_id for no key update;
+  if not found then
+    raise exception 'Workshop not found.';
+  end if;
+  perform r.id from public.registrations r
+    where r.workshop_id = p_workshop_id for update;
+
+  if exists (
+    select 1 from public.registrations r where r.workshop_id = p_workshop_id
+      and r.attendance_zoom_meeting_uuid is not null
+      and r.attendance_zoom_meeting_uuid <> p_meeting_uuid
+  ) then
+    raise exception 'Stored meeting UUID does not match; nothing was reset.';
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'registration_id', r.id,
+    'attendance_duration_minutes', r.attendance_duration_minutes,
+    'attendance_zoom_meeting_uuid', r.attendance_zoom_meeting_uuid,
+    'attendance_synced_at', r.attendance_synced_at
+  ) order by r.id), '[]'::jsonb) into registrations
+  from public.registrations r
+  where r.workshop_id = p_workshop_id and r.attendance_zoom_meeting_uuid = p_meeting_uuid;
+
+  if p_apply then
+    update public.registrations
+    set attendance_duration_minutes = null, attendance_zoom_meeting_uuid = null,
+      attendance_synced_at = null
+    where workshop_id = p_workshop_id and attendance_zoom_meeting_uuid = p_meeting_uuid;
+  end if;
+
+  return jsonb_build_object(
+    'workshop_id', p_workshop_id, 'workshop_name', workshop_name,
+    'meeting_uuid', p_meeting_uuid, 'applied', coalesce(p_apply, false),
+    'registrations', registrations
+  );
+end;
+$$;
+
+revoke execute on function public.reset_zoom_attendance(uuid, text, boolean) from public, anon, authenticated;
+grant execute on function public.reset_zoom_attendance(uuid, text, boolean) to service_role;
 
 commit;

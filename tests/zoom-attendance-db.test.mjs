@@ -18,24 +18,25 @@ const input = (email = "test@example.com", minutes = 2.5) => [
 test("attendance migration and import against PostgreSQL", async t => {
   const db = new PGlite();
   t.after(() => db.close());
-  // Minimal pre-existing schema, verified against VTS on 2026-10-14.
+  // Minimal base schema plus secondary_email from the onboarding migration.
+  // Permit NULL status to exercise compatibility with nullable registrations.
   await db.exec(`
     create role anon;
     create role authenticated;
     create role service_role bypassrls;
     create type public.attendance_status as enum ('registered', 'cancelled');
     create table public.workshops (id uuid primary key, name text not null);
-    create table public.participants (id uuid primary key, email varchar not null);
+    create table public.participants (id uuid primary key, email varchar not null, secondary_email text);
     create table public.registrations (
       id uuid primary key, participant_id uuid not null references public.participants,
       workshop_id uuid not null references public.workshops,
       registration_date date not null default current_date,
-      attendance_status public.attendance_status not null default 'registered'
+      attendance_status public.attendance_status default 'registered'
     );
     grant usage on schema public to anon, authenticated, service_role;
     grant all on all tables in schema public to anon, authenticated, service_role;
     insert into public.workshops values ('${workshop}', 'Attendance test'), ('${otherWorkshop}', 'Other workshop');
-    insert into public.participants values ('${person}', ' Test@Example.com '), ('${other}', 'other@example.com');
+    insert into public.participants (id, email) values ('${person}', ' Test@Example.com '), ('${other}', 'other@example.com');
     insert into public.registrations (id, participant_id, workshop_id) values
       ('${registration}', '${person}', '${workshop}'), ('${otherRegistration}', '${person}', '${otherWorkshop}');
   `);
@@ -62,6 +63,17 @@ test("attendance migration and import against PostgreSQL", async t => {
   };
   const stored = async () =>
     (await db.query("select * from public.registrations order by id")).rows;
+  const reset = async (
+    meeting = "instance-uuid",
+    apply = false,
+    workshopId = workshop,
+  ) => {
+    const result = await db.query(
+      "select public.reset_zoom_attendance($1, $2, $3) as result",
+      [workshopId, meeting, apply],
+    );
+    return result.rows[0].result;
+  };
 
   await t.test(
     "preview matches only the selected workshop without changing data",
@@ -120,6 +132,89 @@ test("attendance migration and import against PostgreSQL", async t => {
   );
 
   await t.test(
+    "NULL status is eligible and matching does not change the status",
+    async () => {
+      await db.query(
+        "update public.registrations set attendance_status = null where id = $1",
+        [registration],
+      );
+      try {
+        const result = await sync(input(), true);
+        assert.equal(result.matched[0]?.registration_id, registration);
+        assert.equal((await stored())[0].attendance_status, null);
+      } finally {
+        await db.query(
+          "update public.registrations set attendance_status = 'registered' where id = $1",
+          [registration],
+        );
+      }
+    },
+  );
+
+  await t.test(
+    "a changed primary email still matches the old address saved as secondary",
+    async () => {
+      await db.query(
+        "update public.participants set email = 'new@example.com', secondary_email = ' TEST@Example.com ' where id = $1",
+        [person],
+      );
+      try {
+        const result = await sync(input(), true);
+        assert.equal(result.matched[0]?.registration_id, registration);
+        assert.equal(
+          Number((await stored())[0].attendance_duration_minutes),
+          2.5,
+        );
+        assert.equal((await stored())[1].attendance_duration_minutes, null);
+      } finally {
+        await db.query(
+          "update public.participants set email = 'test@example.com', secondary_email = null where id = $1",
+          [person],
+        );
+      }
+    },
+  );
+
+  await t.test(
+    "a changed email without a saved alias stays unmatched",
+    async () => {
+      const before = await stored();
+      await db.query(
+        "update public.participants set email = 'new@example.com' where id = $1",
+        [person],
+      );
+      try {
+        const result = await sync(input(), true);
+        assert.deepEqual(result.unregistered_emails, ["test@example.com"]);
+        assert.deepEqual(await stored(), before);
+      } finally {
+        await db.query(
+          "update public.participants set email = 'test@example.com' where id = $1",
+          [person],
+        );
+      }
+    },
+  );
+
+  await t.test(
+    "a guest with no email is counted without assigning attendance by name",
+    async () => {
+      const before = await stored();
+      const { totals, missingEmailCount } = calculateAttendance([
+        {
+          name: "test@example.com",
+          user_email: "",
+          join_time: "2026-10-14T10:00:00Z",
+          leave_time: "2026-10-14T10:10:00Z",
+        },
+      ]);
+      assert.equal(missingEmailCount, 1);
+      assert.deepEqual((await sync(totals, true)).matched, []);
+      assert.deepEqual(await stored(), before);
+    },
+  );
+
+  await t.test(
     "repeat imports replace totals and reject a different meeting instance",
     async () => {
       await sync(input(), true);
@@ -134,6 +229,10 @@ test("attendance migration and import against PostgreSQL", async t => {
       );
       await assert.rejects(
         sync(input(), true, "different-instance"),
+        /another Zoom meeting/,
+      );
+      await assert.rejects(
+        sync(input(), false, "different-instance"),
         /another Zoom meeting/,
       );
       assert.equal(
@@ -166,6 +265,91 @@ test("attendance migration and import against PostgreSQL", async t => {
   );
 
   await t.test(
+    "primary and secondary collisions across participants are ambiguous",
+    async () => {
+      const duplicate = "30000000-0000-4000-8000-000000000003";
+      const before = await stored();
+      await db.query(
+        "update public.participants set secondary_email = ' TEST@example.com ' where id = $1",
+        [other],
+      );
+      await db.query(
+        "insert into public.registrations (id, participant_id, workshop_id) values ($1, $2, $3)",
+        [duplicate, other, workshop],
+      );
+      try {
+        const result = await sync(input("test@example.com", 99), true);
+        assert.deepEqual(result.matched, []);
+        assert.deepEqual(result.ambiguous_emails, ["test@example.com"]);
+        assert.equal(
+          (await stored())[0].attendance_duration_minutes,
+          before[0].attendance_duration_minutes,
+        );
+        assert.equal((await stored())[2].attendance_duration_minutes, null);
+      } finally {
+        await db.query("delete from public.registrations where id = $1", [
+          duplicate,
+        ]);
+        await db.query(
+          "update public.participants set secondary_email = null where id = $1",
+          [other],
+        );
+      }
+    },
+  );
+
+  await t.test(
+    "identical primary and secondary addresses still match once",
+    async () => {
+      await db.query(
+        "update public.participants set secondary_email = ' TEST@EXAMPLE.COM ' where id = $1",
+        [person],
+      );
+      try {
+        const result = await sync(input());
+        assert.equal(result.matched.length, 1);
+        assert.deepEqual(result.ambiguous_emails, []);
+      } finally {
+        await db.query(
+          "update public.participants set secondary_email = null where id = $1",
+          [person],
+        );
+      }
+    },
+  );
+
+  await t.test(
+    "two reported aliases cannot overwrite one registration in either report order",
+    async () => {
+      const before = await stored();
+      await db.query(
+        "update public.participants set secondary_email = 'alias@example.com' where id = $1",
+        [person],
+      );
+      try {
+        const totals = [
+          ...input("test@example.com", 90),
+          ...input("alias@example.com", 60),
+        ];
+        for (const rows of [totals, [...totals].reverse()]) {
+          const result = await sync(rows, true);
+          assert.deepEqual(result.matched, []);
+          assert.deepEqual(result.ambiguous_emails.sort(), [
+            "alias@example.com",
+            "test@example.com",
+          ]);
+          assert.deepEqual(await stored(), before);
+        }
+      } finally {
+        await db.query(
+          "update public.participants set secondary_email = null where id = $1",
+          [person],
+        );
+      }
+    },
+  );
+
+  await t.test(
     "duplicate matching registrations are flagged instead of guessing",
     async () => {
       const duplicate = "30000000-0000-4000-8000-000000000003";
@@ -187,6 +371,10 @@ test("attendance migration and import against PostgreSQL", async t => {
       await db.query("delete from public.registrations where id = $1", [
         duplicate,
       ]);
+      await db.query(
+        "update public.participants set email = 'other@example.com' where id = $1",
+        [other],
+      );
     },
   );
 
@@ -226,11 +414,40 @@ test("attendance migration and import against PostgreSQL", async t => {
   );
 
   await t.test(
+    "a malformed later session preserves previously verified totals",
+    async () => {
+      const before = await stored();
+      await assert.rejects(
+        async () =>
+          sync(
+            calculateAttendance([
+              {
+                user_email: "test@example.com",
+                join_time: "2026-10-14T10:00:00Z",
+                leave_time: "2026-10-14T10:01:00Z",
+              },
+              {
+                user_email: "test@example.com",
+                join_time: "invalid",
+                leave_time: "2026-10-14T10:10:00Z",
+              },
+            ]).totals,
+            true,
+          ),
+        /row 2; nothing was saved/,
+      );
+      assert.deepEqual(await stored(), before);
+    },
+  );
+
+  await t.test(
     "browser roles cannot call the import or forge, change, or transfer attendance",
     async () => {
       for (const role of ["anon", "authenticated"]) {
         await db.exec(`set role ${role}`);
         await assert.rejects(sync(input(), false), /permission denied/);
+        await assert.rejects(reset(), /permission denied/);
+        await assert.rejects(reset("instance-uuid", true), /permission denied/);
         await assert.rejects(
           db.query(
             "update public.registrations set attendance_duration_minutes = 100 where id = $1",
@@ -258,6 +475,66 @@ test("attendance migration and import against PostgreSQL", async t => {
           [registration],
         );
       }
+      await db.exec("reset role");
+    },
+  );
+
+  await t.test(
+    "a mistaken meeting can be previewed, reset, and re-imported without affecting another workshop",
+    async () => {
+      await db.exec("set role service_role");
+      await sync(input(), true, "other-workshop-meeting", otherWorkshop);
+      const absentFromReplacement = "30000000-0000-4000-8000-000000000003";
+      await db.query(
+        "insert into public.registrations (id, participant_id, workshop_id) values ($1, $2, $3)",
+        [absentFromReplacement, other, workshop],
+      );
+      await sync(input("other@example.com", 10), true);
+      const before = await stored();
+      await assert.rejects(reset("wrong-confirmation", true), /does not match/);
+      await assert.rejects(reset("123456789", true), /exact stored/);
+      await assert.rejects(
+        reset("instance-uuid", true, "10000000-0000-4000-8000-000000000099"),
+        /Workshop not found/,
+      );
+      const preview = await reset();
+      assert.equal(preview.applied, false);
+      assert.equal(preview.workshop_name, "Attendance test");
+      assert.equal(preview.registrations.length, 2);
+      assert.equal(preview.registrations[0].registration_id, registration);
+      assert.equal(preview.registrations[0].attendance_duration_minutes, 3.75);
+      assert.deepEqual(await stored(), before);
+      // Reset includes cancelled registrations, which would otherwise retain
+      // the wrong meeting UUID and prevent the replacement import.
+      await db.query(
+        "update public.registrations set attendance_status = 'cancelled' where id = $1",
+        [registration],
+      );
+      const result = await reset("instance-uuid", true);
+      assert.equal(result.applied, true);
+      const cleared = (await stored())[0];
+      assert.equal(cleared.attendance_duration_minutes, null);
+      assert.equal(cleared.attendance_zoom_meeting_uuid, null);
+      assert.equal(cleared.attendance_synced_at, null);
+      assert.equal(cleared.attendance_status, "cancelled");
+      assert.deepEqual((await stored())[1], before[1]);
+      assert.deepEqual((await reset("instance-uuid", true)).registrations, []);
+      await db.query(
+        "update public.registrations set attendance_status = 'registered' where id = $1",
+        [registration],
+      );
+      await sync(input("test@example.com", 5), true, "correct-instance");
+      await sync(input("test@example.com", 5), true, "correct-instance");
+      const imported = (await stored())[0];
+      assert.equal(Number(imported.attendance_duration_minutes), 5);
+      assert.equal(imported.attendance_zoom_meeting_uuid, "correct-instance");
+      const absent = (await stored())[2];
+      assert.equal(absent.id, absentFromReplacement);
+      assert.equal(absent.attendance_duration_minutes, null);
+      assert.equal(absent.attendance_zoom_meeting_uuid, null);
+      assert.equal(absent.attendance_synced_at, null);
+      await assert.rejects(reset("instance-uuid", true), /does not match/);
+      assert.deepEqual((await stored())[1], before[1]);
       await db.exec("reset role");
     },
   );
