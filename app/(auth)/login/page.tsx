@@ -20,22 +20,6 @@ export default function LoginPage() {
     try {
       const normalizedEmail = email.trim().toLowerCase();
 
-      const { data: existingUser, error: lookupError } = await supabase
-        .from("participants")
-        .select("id")
-        .eq("email", normalizedEmail)
-        .maybeSingle();
-
-      if (lookupError) {
-        setError("Unable to log in. Please try again.");
-        return;
-      }
-
-      if (!existingUser) {
-        setError("No account found with this email.");
-        return;
-      }
-
       const { error: authError } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password,
@@ -43,7 +27,7 @@ export default function LoginPage() {
 
       if (authError) {
         if (authError.code === "invalid_credentials") {
-          setError("Invalid password.");
+          setError("Invalid email or password.");
         } else if (authError.code === "email_not_confirmed") {
           setError("Please confirm your email before logging in.");
         } else if (authError.status === 429) {
@@ -55,7 +39,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.replace("/");
+      router.replace("/profile");
     } catch {
       setError("Unable to log in. Please try again.");
     } finally {

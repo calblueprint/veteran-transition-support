@@ -25,7 +25,7 @@ importers:
         version: 19.3.0(react@19.3.0)
     devDependencies:
       '@electric-sql/pglite':
-        specifier: 0.5.8
+        specifier: ^0.5.8
         version: 0.5.8
       '@ianvs/prettier-plugin-sort-imports':
         specifier: ^4.7.1
