@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "attendance:sync": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/sync-zoom-attendance.mjs",
     "lint": "pnpm exec eslint .",
     "lint:fix": "pnpm exec eslint . --fix",
     "tsc": "pnpm exec tsc --noEmit",
