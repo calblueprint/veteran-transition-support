@@ -10,10 +10,14 @@ import { test } from "node:test";
 import {
   EMPTY_PROFILE,
   profileToForm,
+  validateOnboarding,
   validateProfile,
 } from "../lib/participant-profile.ts";
 
 const validProfile = {
+  ...EMPTY_PROFILE,
+  phone_number: "(415) 555-0123",
+  affiliation: "veteran",
   first_name: "Test",
   last_name: "Participant",
   email: "participant@example.com",
@@ -29,14 +33,11 @@ test("an empty form identifies each required field", () => {
   const result = validateProfile(EMPTY_PROFILE);
   assert.equal(result.success, false);
   assert.deepEqual(Object.keys(result.errors).sort(), [
-    "education_level",
+    "affiliation",
     "email",
     "first_name",
     "last_name",
-    "military_branch",
-    "mos",
-    "rank",
-    "service_start_date",
+    "phone_number",
   ]);
 });
 
@@ -44,9 +45,9 @@ test("text is trimmed before saving or checking required values", () => {
   const result = validateProfile({ ...validProfile, first_name: "  Test  " });
   assert.equal(result.success, true);
   assert.equal(result.data.first_name, "Test");
-  const blank = validateProfile({ ...validProfile, rank: "   " });
+  const blank = validateProfile({ ...validProfile, first_name: "   " });
   assert.equal(blank.success, false);
-  assert.ok(blank.errors.rank);
+  assert.ok(blank.errors.first_name);
 });
 
 test("normalization preserves raw input and excludes database-only fields", () => {
@@ -59,7 +60,12 @@ test("normalization preserves raw input and excludes database-only fields", () =
   const result = validateProfile(input);
 
   assert.equal(result.success, true);
-  assert.deepEqual(result.data, validProfile);
+  assert.deepEqual(result.data, {
+    ...validProfile,
+    secondary_email: null,
+    education_history: null,
+    employment_history: null,
+  });
   assert.equal(input.first_name, "  Test  ");
 });
 
@@ -249,4 +255,77 @@ test("an existing incomplete record loads with empty form fields", () => {
   assert.equal(values.military_branch, "");
   assert.equal(values.service_end_date, "");
   assert.equal("id" in values, false);
+});
+
+test("onboarding accepts every affiliation without requiring military details", () => {
+  for (const affiliation of [
+    "veteran",
+    "active-duty",
+    "reserve",
+    "Guard",
+    "spouse",
+    "base-staff",
+  ]) {
+    const result = validateOnboarding({
+      ...validProfile,
+      affiliation,
+      id: "injected",
+      verification_status: true,
+    });
+    assert.equal(result.success, true);
+    assert.deepEqual(Object.keys(result.data).sort(), [
+      "affiliation",
+      "email",
+      "first_name",
+      "last_name",
+      "phone_number",
+    ]);
+  }
+});
+
+test("partial profiles support civilians and normalize omitted optional fields to null", () => {
+  const result = validateProfile({
+    ...EMPTY_PROFILE,
+    first_name: "Test",
+    last_name: "Spouse",
+    email: "spouse@example.com",
+    phone_number: "4155550123",
+    affiliation: "spouse",
+  });
+  assert.equal(result.success, true);
+  for (const key of [
+    "military_branch",
+    "rank",
+    "mos",
+    "service_start_date",
+    "service_end_date",
+    "education_level",
+    "education_history",
+    "employment_history",
+    "secondary_email",
+  ])
+    assert.equal(result.data[key], null);
+});
+
+test("contact and history limits reject invalid data while preserving user input", () => {
+  for (const changes of [
+    { phone_number: "call-me" },
+    { phone_number: "12345" },
+    { affiliation: "admin" },
+    { secondary_email: "invalid" },
+    { employment_history: "a".repeat(10001) },
+    { education_history: "a".repeat(10001) },
+    { rank: "a".repeat(255) },
+  ]) {
+    assert.equal(
+      validateProfile({ ...validProfile, ...changes }).success,
+      false,
+    );
+  }
+});
+
+test("an end date cannot be saved without a start date", () => {
+  const result = validateProfile({ ...validProfile, service_start_date: "" });
+  assert.equal(result.success, false);
+  assert.ok(result.errors.service_start_date);
 });

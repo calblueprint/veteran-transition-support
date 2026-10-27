@@ -1,4 +1,6 @@
 import type { CreateWorkshopInput, Workshop } from "@/types/workshop";
+// MERGE: both imports kept. workshopErrorMessage is from this branch, createEventbriteEvent is from main.
+import { createEventbriteEvent } from "@/actions/eventbrite/createEventbriteEvent";
 import { workshopErrorMessage } from "@/lib/workshop-errors";
 import supabase from "../client";
 
@@ -41,7 +43,15 @@ export async function fetchWorkshopRegistrationCount(
 export async function createWorkshop(
   workshop: CreateWorkshopInput,
 ): Promise<void> {
-  const { error } = await supabase.from("workshops").insert(workshop);
+  // Save the workshop locally first, so it exists even if Eventbrite is down.
+  // MERGE: insert + select id + single comes from main (the id is needed for the Eventbrite sync).
+  const { data, error } = await supabase
+    .from("workshops")
+    .insert(workshop)
+    .select("id")
+    .single();
+
+  // MERGE: error mapping comes from this branch (workshopErrorMessage), with the create message.
   if (error) {
     throw new Error(
       workshopErrorMessage(
@@ -50,8 +60,31 @@ export async function createWorkshop(
       ),
     );
   }
+
+  // Then try to create the matching Eventbrite event and save its id on the row.
+  // Any failure here is only logged: the workshop is already saved.
+  // MERGE: this whole sync block comes from main, unchanged.
+  try {
+    const eventbriteEventId = await createEventbriteEvent(workshop);
+
+    const { error: updateError } = await supabase
+      .from("workshops")
+      .update({ eventbrite_event_id: eventbriteEventId })
+      .eq("id", data.id);
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+  } catch (err) {
+    console.error(
+      `[Eventbrite] Failed to sync workshop ${data.id} (${workshop.name}): ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
 }
 
+// MERGE: updateWorkshop is from this branch, unchanged.
 export async function updateWorkshop(
   id: string,
   workshop: CreateWorkshopInput,
@@ -77,6 +110,7 @@ export async function updateWorkshop(
     );
 }
 
+// MERGE: deleteWorkshop is from this branch, unchanged.
 export async function deleteWorkshop(id: string): Promise<void> {
   const { data, error } = await supabase
     .from("workshops")

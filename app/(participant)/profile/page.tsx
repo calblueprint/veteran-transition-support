@@ -1,220 +1,185 @@
 "use client";
 
 import type {
+  ParticipantProfile,
   ProfileErrors,
   ProfileFormValues,
 } from "@/lib/participant-profile";
-import type { ChangeEvent, FormEvent, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
-import {
-  fetchParticipantProfile,
-  saveParticipantProfile,
-} from "@/actions/supabase/queries/participants";
+import type { ChangeEvent, FormEvent } from "react";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { saveParticipantProfile } from "@/actions/supabase/queries/participants";
+import { DocumentUploads } from "@/components/participant/document-uploads";
+import { ParticipantAccess } from "@/components/participant/participant-access";
+import { Field, PersonalFields } from "@/components/participant/profile-fields";
 import {
   EDUCATION_LEVELS,
-  EMPTY_PROFILE,
   MILITARY_BRANCHES,
   profileToForm,
   validateProfile,
 } from "@/lib/participant-profile";
+import { supabase } from "@/lib/supabase";
 import styles from "./profile.module.css";
 
-type FieldProps = {
-  name: keyof ProfileFormValues;
-  label: string;
-  error?: string;
-  children: ReactNode;
-};
-
-/** Associates a control with its label and optional accessible error message. */
-function Field({ name, label, error, children }: FieldProps) {
-  return (
-    <div className={styles.field}>
-      <label htmlFor={name}>{label}</label>
-      {children}
-      {error && (
-        <p id={`${name}-error`} className={styles.fieldError}>
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-/** Loads and edits the shared development participant until auth is available. */
-export default function ProfilePage() {
-  const [values, setValues] = useState<ProfileFormValues>(EMPTY_PROFILE);
+/** Edits an existing authenticated profile; only onboarding creates participant rows. */
+function ProfileEditor({
+  initialProfile,
+}: {
+  initialProfile: ParticipantProfile;
+}) {
+  const router = useRouter();
+  const [profile, setProfile] = useState(initialProfile);
+  const [values, setValues] = useState(() => profileToForm(initialProfile));
   const [errors, setErrors] = useState<ProfileErrors>({});
-  const [exists, setExists] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [loadError, setLoadError] = useState("");
-  const [saveError, setSaveError] = useState("");
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [loadAttempt, setLoadAttempt] = useState(0);
-  const saveInProgress = useRef(false);
-  const formRef = useRef<HTMLFormElement>(null);
-  const isFormDisabled = loading || saving || Boolean(loadError);
-
-  useEffect(() => {
-    // Ignore responses from a previous effect after unmount or a load retry.
-    let active = true;
-    async function loadProfile() {
-      try {
-        const profile = await fetchParticipantProfile();
-        if (active) {
-          setExists(profile !== null);
-          setValues(profile ? profileToForm(profile) : EMPTY_PROFILE);
-        }
-      } catch {
-        if (active) {
-          setLoadError("We couldn’t load your profile. Please try again.");
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-    void loadProfile();
-    return () => {
-      active = false;
-    };
-  }, [loadAttempt]);
+  const [verificationMessage, setVerificationMessage] = useState("");
+  const pending = useRef(false);
+  const unverified = !profile.verification_status;
 
   function updateField(name: keyof ProfileFormValues, value: string) {
     setValues(current => ({ ...current, [name]: value }));
     setErrors(current => ({ ...current, [name]: undefined }));
     setSuccess("");
-    setSaveError("");
+    setError("");
   }
-
-  function inputProps(name: keyof ProfileFormValues) {
+  function inputProps(name: keyof ProfileFormValues, flagged = true) {
     return {
       id: name,
       name,
       value: values[name],
-      onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-        updateField(name, event.target.value),
+      onChange: (
+        event: ChangeEvent<
+          HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+        >,
+      ) => updateField(name, event.target.value),
       "aria-invalid": Boolean(errors[name]),
-      "aria-describedby": errors[name] ? `${name}-error` : undefined,
+      "aria-describedby":
+        [
+          errors[name] ? `${name}-error` : "",
+          flagged && unverified ? `${name}-verification` : "",
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined,
     };
   }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (loading || loadError || saveInProgress.current) return;
-    setSaveError("");
+    if (pending.current) return;
+    setError("");
     setSuccess("");
     const result = validateProfile(values);
     if (!result.success) {
       setErrors(result.errors);
-      const firstInvalidField = Object.keys(result.errors)[0];
-      const field = formRef.current?.elements.namedItem(firstInvalidField);
-      if (field instanceof HTMLElement) field.focus();
+      (
+        event.currentTarget.elements.namedItem(
+          Object.keys(result.errors)[0],
+        ) as HTMLElement | null
+      )?.focus();
       return;
     }
     setErrors({});
-    // A ref blocks duplicate submissions immediately, before React renders the
-    // disabled button. State alone does not guard this interval.
-    saveInProgress.current = true;
+    pending.current = true;
     setSaving(true);
     try {
-      const profile = await saveParticipantProfile(result.data, exists);
-      setValues(profileToForm(profile));
-      setExists(true);
+      const saved = await saveParticipantProfile(profile.id, result.data);
+      setProfile(saved);
+      setValues(profileToForm(saved));
       setSuccess("Your profile has been saved.");
-    } catch (error) {
-      const code =
-        typeof error === "object" && error !== null && "code" in error
-          ? error.code
-          : undefined;
-      // 23505 is an insert conflict; PGRST116 means the expected single row was
-      // not returned. Reload instead of assuming that the cached row still exists.
-      setSaveError(
-        code === "23505" || code === "PGRST116"
-          ? "This profile changed in another session. Reload the page and try again."
-          : "We couldn’t save your profile. Your changes are still here. Please try again.",
+    } catch {
+      setError(
+        "We couldn’t save your profile. Your changes are still here. Please try again.",
       );
     } finally {
-      saveInProgress.current = false;
+      pending.current = false;
       setSaving(false);
     }
   }
-
+  async function signOut() {
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) setError("We couldn’t log you out. Please try again.");
+    else router.replace("/login");
+  }
   return (
-    <main className={styles.page}>
-      <header className={styles.header}>
-        <p className={styles.eyebrow}>Veteran Transition Support</p>
-        <h1>Participant profile</h1>
+    <>
+      <div className={styles.accountBar}>
         <p>
-          Tell us about yourself, your military service, and your education.
+          Verification status:{" "}
+          <strong>{unverified ? "Unverified" : "Verified"}</strong>
         </p>
-      </header>
-
-      {loading && <p role="status">Loading your profile…</p>}
-      {loadError && (
-        <div className={styles.error} role="alert">
-          <p>{loadError}</p>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => {
+            void signOut();
+          }}
+        >
+          Log out
+        </button>
+      </div>
+      {unverified && (
+        <section
+          className={styles.verification}
+          aria-label="Profile verification"
+        >
+          <p>
+            Military details, education, employment, and files are self-reported
+            and remain unverified.
+          </p>
           <button
             type="button"
-            onClick={() => {
-              setLoading(true);
-              setLoadError("");
-              setLoadAttempt(attempt => attempt + 1);
-            }}
+            onClick={() =>
+              setVerificationMessage(
+                "Verification is not available yet. Your profile remains unverified; no verification request has been submitted.",
+              )
+            }
           >
-            Try again
+            Verify
           </button>
-        </div>
+          <p role="status">{verificationMessage}</p>
+        </section>
       )}
-
-      <form ref={formRef} onSubmit={handleSubmit} noValidate>
-        <p className={styles.requiredNote}>Fields marked * are required.</p>
-        <fieldset disabled={isFormDisabled}>
+      <form onSubmit={submit} noValidate>
+        <p className={styles.requiredNote}>
+          Fields marked * are required. Save the rest whenever you are ready.
+        </p>
+        <fieldset disabled={saving}>
           <legend>Personal information</legend>
-          <div className={styles.grid}>
+          <PersonalFields
+            values={values}
+            errors={errors}
+            onChange={updateField}
+          />
+          <div className={styles.secondaryEmail}>
             <Field
-              name="first_name"
-              label="First name *"
-              error={errors.first_name}
+              name="secondary_email"
+              label="Secondary email (affiliated with Coursera access)"
+              error={errors.secondary_email}
             >
               <input
-                {...inputProps("first_name")}
-                autoComplete="given-name"
-                required
-              />
-            </Field>
-            <Field
-              name="last_name"
-              label="Last name *"
-              error={errors.last_name}
-            >
-              <input
-                {...inputProps("last_name")}
-                autoComplete="family-name"
-                required
-              />
-            </Field>
-            <Field name="email" label="Email *" error={errors.email}>
-              <input
-                {...inputProps("email")}
+                {...inputProps("secondary_email", false)}
                 type="email"
-                autoComplete="email"
-                required
+                maxLength={254}
               />
+              <p className={styles.hint}>
+                Use the email associated with your Coursera access, if you have
+                one.
+              </p>
             </Field>
           </div>
         </fieldset>
-
-        <fieldset disabled={isFormDisabled}>
+        <fieldset disabled={saving}>
           <legend>Military service</legend>
           <div className={styles.grid}>
             <Field
               name="military_branch"
-              label="Military branch *"
+              label="Military branch"
               error={errors.military_branch}
+              unverified={unverified}
             >
-              <select {...inputProps("military_branch")} required>
-                <option value="">Select a branch</option>
+              <select {...inputProps("military_branch")}>
+                <option value="">Not provided / not applicable</option>
                 {MILITARY_BRANCHES.map(option => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -222,79 +187,143 @@ export default function ProfilePage() {
                 ))}
               </select>
             </Field>
-            <Field name="rank" label="Rank *" error={errors.rank}>
-              <input {...inputProps("rank")} required />
+            <Field
+              name="rank"
+              label="Rank"
+              error={errors.rank}
+              unverified={unverified}
+            >
+              <input {...inputProps("rank")} maxLength={254} />
             </Field>
             <Field
               name="mos"
-              label="MOS / military occupation *"
+              label="MOS / military occupation"
               error={errors.mos}
+              unverified={unverified}
             >
-              <input {...inputProps("mos")} required />
+              <input {...inputProps("mos")} maxLength={254} />
             </Field>
             <Field
               name="service_start_date"
-              label="Service start date *"
+              label="Service start date"
               error={errors.service_start_date}
+              unverified={unverified}
             >
-              <input
-                {...inputProps("service_start_date")}
-                type="date"
-                required
-              />
+              <input {...inputProps("service_start_date")} type="date" />
             </Field>
             <Field
               name="service_end_date"
               label="Service end date"
               error={errors.service_end_date}
+              unverified={unverified}
             >
               <input {...inputProps("service_end_date")} type="date" />
               <p className={styles.hint}>
-                Leave blank if you are still serving.
+                Leave blank if you are still serving or this does not apply.
               </p>
             </Field>
           </div>
         </fieldset>
-
-        <fieldset disabled={isFormDisabled}>
-          <legend>Education</legend>
-          <Field
-            name="education_level"
-            label="Highest education level *"
-            error={errors.education_level}
-          >
-            <select {...inputProps("education_level")} required>
-              <option value="">Select an education level</option>
-              {EDUCATION_LEVELS.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </Field>
+        <fieldset disabled={saving}>
+          <legend>Education and employment</legend>
+          <div className={styles.historyFields}>
+            <Field
+              name="education_level"
+              label="Highest education level"
+              error={errors.education_level}
+              unverified={unverified}
+            >
+              <select {...inputProps("education_level")}>
+                <option value="">Not provided</option>
+                {EDUCATION_LEVELS.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field
+              name="education_history"
+              label="Education history"
+              error={errors.education_history}
+              unverified={unverified}
+            >
+              <textarea
+                {...inputProps("education_history")}
+                rows={5}
+                maxLength={10000}
+                placeholder="Schools, degrees or training, and dates"
+              />
+            </Field>
+            <Field
+              name="employment_history"
+              label="Employment history"
+              error={errors.employment_history}
+              unverified={unverified}
+            >
+              <textarea
+                {...inputProps("employment_history")}
+                rows={5}
+                maxLength={10000}
+                placeholder="Employers, roles, responsibilities, and dates"
+              />
+            </Field>
+          </div>
         </fieldset>
-
         {Object.values(errors).some(Boolean) && (
           <p className={styles.error} role="alert">
             Please check the highlighted fields.
           </p>
         )}
-        {saveError && (
+        {error && (
           <p className={styles.error} role="alert">
-            {saveError}
+            {error}
           </p>
         )}
         <p className={styles.success} role="status">
           {success}
         </p>
-        <button
-          className={styles.saveButton}
-          type="submit"
-          disabled={isFormDisabled}
-        >
+        <button className={styles.saveButton} type="submit" disabled={saving}>
           {saving ? "Saving…" : "Save profile"}
         </button>
       </form>
+      <section className={styles.documents} aria-labelledby="uploads-heading">
+        <h2 id="uploads-heading">Resume and documents</h2>
+        <p>
+          Enter your history above manually. Uploading a file does not fill in
+          your profile.
+        </p>
+        <DocumentUploads
+          userId={profile.id}
+          verified={profile.verification_status}
+          kind="resumes"
+        />
+        <DocumentUploads
+          userId={profile.id}
+          verified={profile.verification_status}
+          kind="documents"
+        />
+      </section>
+    </>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <main className={styles.page}>
+      <header className={styles.header}>
+        <p className={styles.eyebrow}>Veteran Transition Support</p>
+        <h1>Participant profile</h1>
+        <p>
+          View and edit your personal information, service history, and
+          documents.
+        </p>
+      </header>
+      <ParticipantAccess>
+        {(_user, profile) =>
+          profile && <ProfileEditor initialProfile={profile} />
+        }
+      </ParticipantAccess>
     </main>
   );
 }
