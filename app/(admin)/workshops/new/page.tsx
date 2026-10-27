@@ -4,6 +4,10 @@ import type { SubmitEvent } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createWorkshop } from "@/actions/supabase/queries/workshops";
+import {
+  MAX_WORKSHOP_CAPACITY,
+  validateWorkshopForm,
+} from "@/lib/workshop-form";
 
 export default function NewWorkshopPage() {
   const router = useRouter();
@@ -14,49 +18,12 @@ export default function NewWorkshopPage() {
     event.preventDefault();
     setError(null);
 
-    const formData = new FormData(event.currentTarget);
-
-    // These fields are text inputs, not file inputs.
-    const name = String(formData.get("name") ?? "").trim();
-    const description = String(formData.get("description") ?? "").trim();
-    const startDate = String(formData.get("start_date") ?? "");
-    const endDate = String(formData.get("end_date") ?? "");
-    const capacityText = String(formData.get("capacity") ?? "").trim();
-    const location = String(formData.get("location") ?? "").trim();
-
-    if (!name) {
-      setError("Please enter a workshop name.");
-      return;
-    }
-
-    if (startDate && endDate && endDate < startDate) {
-      setError("End date cannot be before start date.");
-      return;
-    }
-
-    const capacity = capacityText === "" ? null : Number(capacityText);
-
-    if (
-      capacity !== null &&
-      (!Number.isInteger(capacity) || capacity < 0 || capacity > 2147483647)
-    ) {
-      setError("Capacity must be a whole number between 0 and 2,147,483,647.");
-      return;
-    }
-
-    const workshop = {
-      name,
-      description: description || null,
-      start_date: startDate || null,
-      end_date: endDate || null,
-      capacity,
-      location: location || null,
-    };
-
     setSubmitting(true);
 
     try {
-      await createWorkshop(workshop);
+      await createWorkshop(
+        validateWorkshopForm(new FormData(event.currentTarget)),
+      );
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Could not create workshop.",
@@ -95,8 +62,20 @@ export default function NewWorkshopPage() {
 
         <div>
           <label htmlFor="capacity">Capacity</label>
-          <input id="capacity" name="capacity" type="number" step="1" />
+          <input
+            id="capacity"
+            name="capacity"
+            type="number"
+            step="1"
+            min="0"
+            max={MAX_WORKSHOP_CAPACITY}
+          />
         </div>
+
+        <p>
+          Leave capacity blank for unlimited spots. Set it to 0 to close
+          registration.
+        </p>
 
         <div>
           <label htmlFor="location">Location</label>
