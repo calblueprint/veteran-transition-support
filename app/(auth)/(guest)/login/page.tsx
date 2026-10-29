@@ -31,32 +31,7 @@ function LoginForm() {
 
       if (authError) {
         if (authError.code === "invalid_credentials") {
-          try {
-            const response = await fetch("/api/auth/check-email", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                email: normalizedEmail,
-              }),
-            });
-
-            if (!response.ok) {
-              setError("Invalid email or password.");
-              return;
-            }
-
-            const result: { exists: boolean } = await response.json();
-
-            if (result.exists) {
-              setError("Invalid password.");
-            } else {
-              setError("No account found with this email.");
-            }
-          } catch {
-            setError("Invalid email or password.");
-          }
+          setError("Invalid email or password.");
         } else if (authError.code === "email_not_confirmed") {
           setError("Please confirm your email before logging in.");
         } else if (authError.status === 429) {
