@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getAdminAccess } from "@/lib/supabase/admin-access";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminLayout({
@@ -8,26 +8,17 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
+  const access = await getAdminAccess(supabase);
 
-  const { data, error } = await supabase.auth.getClaims();
-
-  if (error || !data?.claims?.sub) {
+  if (access.status === "unauthenticated") {
     redirect("/login");
   }
 
-  const adminSupabase = createAdminClient();
-
-  const { data: adminUser, error: adminError } = await adminSupabase
-    .from("admin_users")
-    .select("id")
-    .eq("id", data.claims.sub)
-    .maybeSingle();
-
-  if (adminError) {
+  if (access.status === "error") {
     throw new Error("Unable to verify admin access.");
   }
 
-  if (!adminUser) {
+  if (!access.isAdmin) {
     redirect("/profile");
   }
 
@@ -38,7 +29,7 @@ export default async function AdminLayout({
     .select(
       "first_name,last_name,email,military_branch,rank,mos,service_start_date,education_level",
     )
-    .eq("id", data.claims.sub)
+    .eq("id", access.userId)
     .maybeSingle();
 
   if (participantError) {
