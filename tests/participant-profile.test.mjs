@@ -329,3 +329,45 @@ test("an end date cannot be saved without a start date", () => {
   assert.equal(result.success, false);
   assert.ok(result.errors.service_start_date);
 });
+
+test("card validation ignores incomplete fields in other cards and only returns its own columns", async () => {
+  const { validateProfileSection } =
+    await import("../lib/participant-profile.ts");
+  const result = validateProfileSection(
+    { ...EMPTY_PROFILE, rank: "  Sergeant  " },
+    "military",
+  );
+  assert.equal(result.success, true);
+  assert.deepEqual(result.data, {
+    military_branch: null,
+    rank: "Sergeant",
+    mos: null,
+    service_start_date: null,
+    service_end_date: null,
+  });
+  assert.deepEqual(
+    validateProfileSection(
+      { ...EMPTY_PROFILE, secondary_email: "  coursera@example.com  " },
+      "coursera",
+    ),
+    { success: true, data: { secondary_email: "coursera@example.com" } },
+  );
+});
+
+test("card validation retains email, service-date, and history limits", async () => {
+  const { validateProfileSection } =
+    await import("../lib/participant-profile.ts");
+  for (const [section, changes, field] of [
+    ["personal", { email: "bad" }, "email"],
+    ["military", { service_end_date: "2019-01-01" }, "service_end_date"],
+    ["coursera", { secondary_email: "bad" }, "secondary_email"],
+    ["history", { education_history: "a".repeat(10001) }, "education_history"],
+  ]) {
+    const result = validateProfileSection(
+      { ...validProfile, ...changes },
+      section,
+    );
+    assert.equal(result.success, false);
+    assert.ok(result.errors[field]);
+  }
+});
