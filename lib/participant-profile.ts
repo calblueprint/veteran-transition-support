@@ -59,6 +59,19 @@ export type ProfileFormValues = OnboardingValues & {
   employment_history: string;
 };
 export type ProfileErrors = Partial<Record<keyof ProfileFormValues, string>>;
+export const PROFILE_SECTION_FIELDS = {
+  personal: ["first_name", "last_name", "email", "phone_number", "affiliation"],
+  military: [
+    "military_branch",
+    "rank",
+    "mos",
+    "service_start_date",
+    "service_end_date",
+  ],
+  history: ["education_level", "education_history", "employment_history"],
+  coursera: ["secondary_email"],
+} as const satisfies Record<string, readonly (keyof ProfileFormValues)[]>;
+export type ProfileSection = keyof typeof PROFILE_SECTION_FIELDS;
 export type OnboardingInput = Omit<OnboardingValues, "affiliation"> & {
   affiliation: Affiliation;
 };
@@ -250,5 +263,29 @@ export function validateProfile(
       education_history: trimmed.education_history || null,
       employment_history: trimmed.employment_history || null,
     },
+  };
+}
+
+/** Validate only the card being edited, including both dates for service edits.
+ * Incomplete legacy fields elsewhere must not block saving this section.
+ */
+export function validateProfileSection(
+  values: Readonly<ProfileFormValues>,
+  section: ProfileSection,
+): ValidationResult<Partial<ParticipantProfileInput>> {
+  const result = validateProfile(values);
+  const fields = PROFILE_SECTION_FIELDS[section];
+  const errors: ProfileErrors = {};
+  if (!result.success) {
+    for (const field of fields) {
+      if (result.errors[field]) errors[field] = result.errors[field];
+    }
+  }
+  if (Object.keys(errors).length) return { success: false, errors };
+  return {
+    success: true,
+    data: Object.fromEntries(
+      fields.map(field => [field, values[field].trim() || null]),
+    ) as Partial<ParticipantProfileInput>,
   };
 }

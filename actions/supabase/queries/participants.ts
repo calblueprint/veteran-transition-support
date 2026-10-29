@@ -5,6 +5,7 @@ export const {
   fetchProfile: fetchParticipantProfile,
   createProfile: createParticipantProfile,
   saveProfile: saveParticipantProfile,
+  saveProfileFields: saveParticipantProfileFields,
   listDocuments,
   uploadDocument,
   downloadDocument,
