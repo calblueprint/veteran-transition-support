@@ -1,6 +1,5 @@
 "use client";
 
-// RESOLVED: kept HEAD (main) Suspense + useSearchParams setup
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -32,33 +31,7 @@ function LoginForm() {
 
       if (authError) {
         if (authError.code === "invalid_credentials") {
-          // RESOLVED: kept incoming check-email block instead of the generic message
-          try {
-            const response = await fetch("/api/auth/check-email", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                email: normalizedEmail,
-              }),
-            });
-
-            if (!response.ok) {
-              setError("Invalid email or password.");
-              return;
-            }
-
-            const result: { exists: boolean } = await response.json();
-
-            if (result.exists) {
-              setError("Invalid password.");
-            } else {
-              setError("No account found with this email.");
-            }
-          } catch {
-            setError("Invalid email or password.");
-          }
+          setError("Invalid email or password.");
         } else if (authError.code === "email_not_confirmed") {
           setError("Please confirm your email before logging in.");
         } else if (authError.status === 429) {
@@ -90,7 +63,6 @@ function LoginForm() {
       <h1>Log In</h1>
       <p>Welcome back! Enter your credentials.</p>
 
-      {/* RESOLVED: kept HEAD (main) expired link banner */}
       {expiredLink && (
         <div role="alert">
           <p style={{ color: "crimson" }}>
@@ -171,7 +143,6 @@ function LoginForm() {
   );
 }
 
-// RESOLVED: kept HEAD (main) Suspense wrapper, required by useSearchParams
 export default function LoginPage() {
   return (
     <Suspense fallback={<p>Loading login...</p>}>

@@ -33,7 +33,6 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      // RESOLVED: kept HEAD (main) signUp call, no check-email lookup
       const { data, error: authError } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
@@ -42,7 +41,6 @@ export default function SignUpPage() {
 
       if (authError) {
         if (authError.code === "user_already_exists") {
-          // RESOLVED: kept HEAD (main) generic message
           setMessage("Check your email to continue.");
         } else if (authError.code === "weak_password") {
           setError("Please choose a stronger password.");
@@ -58,7 +56,6 @@ export default function SignUpPage() {
       if (data.user?.identities?.length === 0) {
         setMessage("Check your email to continue.");
       } else if (data.session) {
-        // RESOLVED: kept HEAD (main) redirect to /onboarding, plus router.refresh() from this commit
         router.replace("/onboarding");
         router.refresh();
       } else {
