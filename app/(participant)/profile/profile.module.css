@@ -227,3 +227,56 @@
   overflow-wrap: anywhere;
   min-width: 0;
 }
+
+.compactUpload + .compactUpload {
+  margin-top: 16px;
+}
+.compactUpload h3 {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  color: #5a6b82;
+  margin-bottom: 4px;
+}
+.compactUpload .fileList {
+  margin: 0;
+}
+.compactUpload .fileList li {
+  align-items: flex-start;
+  padding: 0;
+  border: 0;
+  gap: 4px 12px;
+}
+.compactUpload .fileList li + li {
+  margin-top: 8px;
+}
+.compactUpload .fileList span {
+  flex: 1;
+}
+.compactUpload button {
+  min-height: 32px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: #0b2649;
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.compactUpload .fileInput {
+  font-size: 14px;
+}
+.compactUpload input::file-selector-button {
+  min-height: 44px;
+  margin-right: 8px;
+  padding: 8px 12px;
+  border: 1px solid #d5deea;
+  border-radius: 6px;
+  background: #f4f6fa;
+  color: #0b2649;
+  cursor: pointer;
+}
+.compactUpload .hint {
+  margin-bottom: 8px;
+}

@@ -22,10 +22,14 @@ export function DocumentUploads({
   userId,
   verified,
   kind,
+  compact = false,
+  editable = true,
 }: {
   userId: string;
   verified: boolean;
   kind: DocumentKind;
+  compact?: boolean;
+  editable?: boolean;
 }) {
   const [documents, setDocuments] = useState<ParticipantDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,41 +116,46 @@ export function DocumentUploads({
   }
   return (
     <section
-      className={styles.uploadSection}
+      className={compact ? styles.compactUpload : styles.uploadSection}
       aria-labelledby={`${kind}-heading`}
     >
       <h3 id={`${kind}-heading`}>
-        {title} {!verified && <UnverifiedBadge />}
+        {compact ? (isResume ? "Resume" : "Other documents") : title}{" "}
+        {!verified && !compact && <UnverifiedBadge />}
       </h3>
-      {!verified && (
+      {!verified && !compact && (
         <p id={`${kind}-verification`} className={styles.hint}>
           These files are unverified until you complete verification.
         </p>
       )}
-      <p id={`${kind}-help`} className={styles.hint}>
-        {isResume ? "PDF, DOC, or DOCX" : "PDF, DOC, DOCX, PNG, or JPEG"}, up to
-        6 MB per file. Uploads save immediately. Files are private to your
-        account.
-      </p>
-      <label htmlFor={`${kind}-file`}>
-        Upload {isResume ? "a resume" : "a document"}
-      </label>
-      <input
-        className={styles.fileInput}
-        id={`${kind}-file`}
-        type="file"
-        accept={
-          isResume ? ".pdf,.doc,.docx" : ".pdf,.doc,.docx,.png,.jpg,.jpeg"
-        }
-        disabled={busy || loading || Boolean(loadError)}
-        aria-describedby={[
-          `${kind}-help`,
-          !verified ? `${kind}-verification` : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        onChange={upload}
-      />
+      {editable && (
+        <>
+          <p id={`${kind}-help`} className={styles.hint}>
+            {isResume ? "PDF, DOC, or DOCX" : "PDF, DOC, DOCX, PNG, or JPEG"},
+            up to 6 MB per file. Uploads save immediately. Files are private to
+            your account.
+          </p>
+          <label htmlFor={`${kind}-file`}>
+            Upload {isResume ? "a resume" : "a document"}
+          </label>
+          <input
+            className={styles.fileInput}
+            id={`${kind}-file`}
+            type="file"
+            accept={
+              isResume ? ".pdf,.doc,.docx" : ".pdf,.doc,.docx,.png,.jpg,.jpeg"
+            }
+            disabled={busy || loading || Boolean(loadError)}
+            aria-describedby={[
+              `${kind}-help`,
+              !verified && !compact ? `${kind}-verification` : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            onChange={upload}
+          />
+        </>
+      )}
       {loading && <p role="status">Loading files…</p>}
       {busy && <p role="status">Working on your file…</p>}
       {loadError && (
@@ -169,7 +178,7 @@ export function DocumentUploads({
         {documents.map(document => (
           <li key={document.path}>
             <span>
-              {document.name} {!verified && <UnverifiedBadge />}
+              {document.name} {!verified && !compact && <UnverifiedBadge />}
             </span>
             <button
               type="button"
@@ -184,9 +193,11 @@ export function DocumentUploads({
           </li>
         ))}
       </ul>
-      <button type="button" disabled={busy || loading} onClick={reload}>
-        Refresh {isResume ? "resumes" : "documents"}
-      </button>
+      {(editable || loadError || error) && (
+        <button type="button" disabled={busy || loading} onClick={reload}>
+          Refresh {isResume ? "resumes" : "documents"}
+        </button>
+      )}
     </section>
   );
 }

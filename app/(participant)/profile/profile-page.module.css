@@ -1,0 +1,413 @@
+.profile {
+  --navy: #0b2649;
+  --gold: #c89b3c;
+  --red: #b01116;
+  --body: #243b54;
+  --muted: #5a6b82;
+  --border: #d5deea;
+  min-height: 100vh;
+  background: #fff;
+  color: var(--body);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.profile button,
+.profile input,
+.profile select,
+.profile textarea {
+  font: inherit;
+}
+.profile button {
+  cursor: pointer;
+}
+.profile :disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.profile :is(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid #2074a5;
+  outline-offset: 3px;
+}
+.navbar {
+  height: 96px;
+  padding: 0 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--navy);
+  border-bottom: 3px solid var(--gold);
+}
+.logo {
+  display: block;
+  object-fit: contain;
+}
+.navActions {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+.navActions > a {
+  color: #fff;
+  font-weight: 500;
+  text-decoration: none;
+}
+.navActions > a:hover {
+  text-decoration: underline;
+}
+.verifyButton,
+.primaryButton {
+  min-height: 48px;
+  padding: 12px 24px;
+  color: #fff;
+  background: var(--red);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-weight: 600 !important;
+}
+.primaryButton {
+  background: var(--navy);
+}
+.verifyButton:hover {
+  background: #920e13;
+}
+.primaryButton:hover {
+  background: #143b6d;
+}
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--navy);
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.avatar::-webkit-details-marker {
+  display: none;
+}
+.accountMenu {
+  position: relative;
+}
+.accountDropdown {
+  position: absolute;
+  right: 0;
+  top: 52px;
+  z-index: 2;
+  width: 220px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 5px 20px #0b26491a;
+  overflow-wrap: anywhere;
+}
+.accountDropdown button {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  background: #f4f6fa;
+  border-radius: 4px;
+  color: var(--navy);
+}
+.content {
+  max-width: 1088px;
+  margin: 0 auto;
+  padding: 56px 24px 80px;
+}
+.pageHeading {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.pageHeading h1 {
+  font-family: var(--font-profile-heading), sans-serif;
+  font-size: 36px;
+  line-height: 44px;
+  font-weight: 700;
+  letter-spacing: 0.72px;
+  text-transform: uppercase;
+  color: var(--navy);
+}
+.pageHeading p {
+  color: var(--muted);
+}
+.goldRule {
+  width: 64px;
+  height: 3px;
+  background: var(--gold);
+}
+.statusBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 24px;
+  padding: 16px 20px;
+  border: 1px solid #c3d0e3;
+  border-radius: 6px;
+  background: #eef2f8;
+}
+.infoIcon {
+  display: flex;
+  width: 20px;
+  height: 24px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+}
+.statusBanner h2 {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.statusBanner p {
+  font-size: 14px;
+  line-height: 20px;
+  margin-top: 4px;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 20px;
+  align-items: stretch;
+}
+.card {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+.wideCard {
+  grid-column: 1 / -1;
+}
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.cardHeader h2 {
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.profile .textButton {
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.textButton:hover {
+  text-decoration-thickness: 2px;
+}
+.details {
+  display: grid;
+  gap: 16px;
+}
+.personalDetails {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 24px;
+}
+.detail {
+  min-width: 0;
+}
+.detail dt {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.detail dd {
+  line-height: 24px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.empty {
+  color: var(--muted);
+}
+.cardNotice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+.profile .editFields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.fieldStack {
+  display: grid;
+  gap: 16px;
+}
+.dateFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.editHint {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.profile input,
+.profile select,
+.profile textarea {
+  border-color: var(--border);
+  border-radius: 6px;
+  color: var(--body);
+}
+.profile label {
+  font-size: 14px;
+  color: var(--navy);
+}
+.profile [aria-invalid="true"] {
+  border-color: #a52020;
+}
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+.formActions span {
+  font-size: 14px;
+  color: var(--muted);
+}
+.secondaryButton {
+  min-height: 48px;
+  padding: 12px 20px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--navy);
+}
+.secondaryButton:hover {
+  background: #f4f6fa;
+}
+.error {
+  color: #a52020;
+  margin-top: 12px;
+  font-size: 14px;
+}
+.success {
+  color: #176336;
+  font-size: 14px;
+}
+.success:not(:empty) {
+  margin-top: 12px;
+}
+.dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  max-width: 480px;
+  width: calc(100% - 32px);
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--body);
+}
+.dialog::backdrop {
+  background: #0b264966;
+}
+.dialog h2 {
+  color: var(--navy);
+  font-size: 22px;
+}
+.dialog p {
+  margin: 16px 0;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+@media (max-width: 760px) {
+  .navbar {
+    padding: 0 20px;
+  }
+  .navActions {
+    gap: 16px;
+  }
+  .content {
+    padding-top: 32px;
+  }
+  .cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .personalDetails {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cardHeader .textButton {
+    min-height: 44px;
+  }
+}
+@media (max-width: 480px) {
+  .navbar {
+    height: auto;
+    min-height: 96px;
+    padding: 12px 16px;
+    gap: 12px;
+  }
+  .navActions {
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    font-size: 14px;
+  }
+  .verifyButton {
+    order: 3;
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 13px !important;
+  }
+  .content {
+    padding: 28px 16px 48px;
+  }
+  .card {
+    padding: 20px;
+  }
+  .personalDetails,
+  .dateFields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pageHeading h1 {
+    font-size: 32px;
+  }
+  .statusBanner {
+    padding: 16px;
+    gap: 10px;
+  }
+}

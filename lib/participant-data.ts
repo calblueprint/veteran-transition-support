@@ -126,10 +126,22 @@ export function createParticipantData(client: SupabaseClient) {
     userId: string,
     profile: ParticipantProfileInput,
   ): Promise<ParticipantProfile> {
+    return saveProfileFields(userId, profile);
+  }
+
+  /** PATCH only submitted fields so independent card saves cannot erase each other. */
+  async function saveProfileFields(
+    userId: string,
+    profile: Partial<ParticipantProfileInput>,
+  ): Promise<ParticipantProfile> {
     await requireUser(userId);
     const fields = Object.fromEntries(
-      EDITABLE_COLUMNS.map(key => [key, profile[key]]),
+      EDITABLE_COLUMNS.filter(
+        key => Object.hasOwn(profile, key) && profile[key] !== undefined,
+      ).map(key => [key, profile[key]]),
     );
+    if (!Object.keys(fields).length)
+      throw new Error("No profile changes to save.");
     const { data, error } = await client
       .from("participants")
       .update(fields)
@@ -214,6 +226,7 @@ export function createParticipantData(client: SupabaseClient) {
     fetchProfile,
     createProfile,
     saveProfile,
+    saveProfileFields,
     listDocuments,
     uploadDocument,
     downloadDocument,

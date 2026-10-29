@@ -255,3 +255,59 @@ test("download rejects another user's path before accessing storage", async () =
   );
   assert.equal(requests.length, 0);
 });
+
+test("independent card saves only patch supplied columns, preserve null clearing, and ignore privileged fields", async () => {
+  const { api, requests } = fixture();
+  await api.saveProfileFields(userId, {
+    rank: "Sergeant",
+    mos: null,
+    email: undefined,
+    id: otherId,
+    verification_status: true,
+  });
+  assert.deepEqual(requests[0].body, { rank: "Sergeant", mos: null });
+  assert.equal(requests[0].method, "PATCH");
+  assert.equal(new URL(requests[0].url).searchParams.get("id"), `eq.${userId}`);
+  await assert.rejects(
+    api.saveProfileFields(userId, { verification_status: true }),
+    /No profile changes/,
+  );
+  assert.equal(requests.length, 1);
+});
+
+test("card saves preserve other persisted sections through a fresh read", async () => {
+  let stored = { ...profile, id: userId, verification_status: false };
+  const { api } = fixture(request => {
+    if (request.method === "PATCH") stored = { ...stored, ...request.body };
+    return { body: stored };
+  });
+  await Promise.all([
+    api.saveProfileFields(userId, { rank: "Captain" }),
+    api.saveProfileFields(userId, { secondary_email: "learning@example.com" }),
+  ]);
+  const refreshed = await api.fetchProfile(userId);
+  assert.equal(refreshed.rank, "Captain");
+  assert.equal(refreshed.secondary_email, "learning@example.com");
+  assert.equal(refreshed.first_name, "Test");
+  assert.equal(refreshed.verification_status, false);
+});
+
+test("card saves reject failed writes and a changed session", async () => {
+  const failed = fixture(() => ({
+    status: 406,
+    body: { code: "PGRST116", message: "No row returned" },
+  }));
+  await assert.rejects(
+    failed.api.saveProfileFields(userId, { rank: "Captain" }),
+  );
+  const { api, client, requests } = fixture();
+  client.auth.getUser = async () => ({
+    data: { user: { id: otherId } },
+    error: null,
+  });
+  await assert.rejects(
+    api.saveProfileFields(userId, { rank: "Captain" }),
+    /session changed/,
+  );
+  assert.equal(requests.length, 0);
+});
