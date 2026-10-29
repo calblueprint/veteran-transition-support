@@ -18,6 +18,7 @@ import {
   profileToForm,
   validateProfile,
 } from "@/lib/participant-profile";
+import { supabase } from "@/lib/supabase";
 import styles from "./profile.module.css";
 
 type FieldProps = {
@@ -42,11 +43,14 @@ function Field({ name, label, error, children }: FieldProps) {
   );
 }
 
-/** Loads and edits the shared development participant until auth is available. */
+/** Loads and edits the authenticated participant's profile. */
 export default function ProfilePage() {
   const [values, setValues] = useState<ProfileFormValues>(EMPTY_PROFILE);
   const [errors, setErrors] = useState<ProfileErrors>({});
   const [exists, setExists] = useState(false);
+  const [participantId, setParticipantId] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [affiliation, setAffiliation] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -62,8 +66,17 @@ export default function ProfilePage() {
     let active = true;
     async function loadProfile() {
       try {
-        const profile = await fetchParticipantProfile();
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
+        if (authError || !user) {
+          throw new Error("Not authenticated.");
+        }
+
+        const profile = await fetchParticipantProfile(user.id);
         if (active) {
+          setParticipantId(user.id);
           setExists(profile !== null);
           setValues(profile ? profileToForm(profile) : EMPTY_PROFILE);
         }
@@ -102,7 +115,8 @@ export default function ProfilePage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (loading || loadError || saveInProgress.current) return;
+    if (loading || loadError || !participantId || saveInProgress.current)
+      return;
     setSaveError("");
     setSuccess("");
     const result = validateProfile(values);
@@ -114,20 +128,42 @@ export default function ProfilePage() {
       return;
     }
     setErrors({});
+    if (!exists && (!phoneNumber.trim() || !affiliation)) {
+      setSaveError("Phone number and affiliation are required.");
+      return;
+    }
     // A ref blocks duplicate submissions immediately, before React renders the
     // disabled button. State alone does not guard this interval.
     saveInProgress.current = true;
     setSaving(true);
     try {
-      const profile = await saveParticipantProfile(result.data, exists);
+      const profile = await saveParticipantProfile(
+        participantId,
+        result.data,
+        exists,
+        !exists ? { phone_number: phoneNumber, affiliation } : undefined,
+      );
       setValues(profileToForm(profile));
       setExists(true);
       setSuccess("Your profile has been saved.");
     } catch (error) {
+      if (!exists && participantId) {
+        // INSERT may have succeeded before a subsequent UPDATE failed.
+        // Detect the new row so retrying does not attempt a duplicate INSERT.
+        try {
+          const createdProfile = await fetchParticipantProfile(participantId);
+          if (createdProfile) setExists(true);
+        } catch {
+          // Keep the original save error and the user's unsaved form values.
+        }
+      }
       const code =
         typeof error === "object" && error !== null && "code" in error
           ? error.code
           : undefined;
+      if (process.env.NODE_ENV === "development") {
+        console.info("Profile save failed:", error);
+      }
       // 23505 is an insert conflict; PGRST116 means the expected single row was
       // not returned. Reload instead of assuming that the cached row still exists.
       setSaveError(
@@ -207,6 +243,44 @@ export default function ProfilePage() {
             </Field>
           </div>
         </fieldset>
+
+        {!exists && (
+          <fieldset disabled={isFormDisabled}>
+            <legend>Initial profile information</legend>
+            <div className={styles.grid}>
+              <div className={styles.field}>
+                <label htmlFor="phone_number">Phone number *</label>
+                <input
+                  id="phone_number"
+                  name="phone_number"
+                  type="tel"
+                  autoComplete="tel"
+                  value={phoneNumber}
+                  onChange={event => setPhoneNumber(event.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="affiliation">Affiliation *</label>
+                <select
+                  id="affiliation"
+                  name="affiliation"
+                  value={affiliation}
+                  onChange={event => setAffiliation(event.target.value)}
+                  required
+                >
+                  <option value="">Select an affiliation</option>
+                  <option value="veteran">Veteran</option>
+                  <option value="active-duty">Active duty</option>
+                  <option value="reserve">Reserve</option>
+                  <option value="Guard">National Guard</option>
+                  <option value="spouse">Spouse</option>
+                  <option value="base-staff">Base staff</option>
+                </select>
+              </div>
+            </div>
+          </fieldset>
+        )}
 
         <fieldset disabled={isFormDisabled}>
           <legend>Military service</legend>
