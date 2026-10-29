@@ -31,5 +31,8 @@ export default async function AdminLayout({
     redirect("/profile");
   }
 
+  // CHANGED: removed the participant profile completeness check; those fields
+  // are optional on main's profile page and would lock out non-veteran admins
+
   return <>{children}</>;
 }
