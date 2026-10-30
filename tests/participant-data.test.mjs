@@ -255,3 +255,23 @@ test("download rejects another user's path before accessing storage", async () =
   );
   assert.equal(requests.length, 0);
 });
+
+test("onboarding saves the branch with an update scoped to the signed-in participant", async () => {
+  const { api, client, requests } = fixture(() => ({ body: { id: userId } }));
+  await api.saveMilitaryBranch(userId, "army");
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].method, "PATCH");
+  assert.ok(requests[0].url.includes(`id=eq.${userId}`));
+  assert.deepEqual(requests[0].body, { military_branch: "army" });
+  // A changed session blocks the write, and a denied write is not reported as saved.
+  client.auth.getUser = async () => ({
+    data: { user: { id: otherId } },
+    error: null,
+  });
+  await assert.rejects(
+    api.saveMilitaryBranch(userId, "army"),
+    /session changed/,
+  );
+  const denied = fixture(() => ({ status: 403, body: { message: "denied" } }));
+  await assert.rejects(denied.api.saveMilitaryBranch(userId, "army"));
+});

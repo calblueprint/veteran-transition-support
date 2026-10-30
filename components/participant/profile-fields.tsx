@@ -45,16 +45,23 @@ export function Field({
   );
 }
 
-/** Common contact fields have identical validation and labels in both flows. */
+/**
+ * Common contact fields have identical validation and labels in both flows.
+ * Pass `fields` to show only some of them, as the onboarding steps do.
+ */
 export function PersonalFields({
   values,
   errors,
   onChange,
+  fields,
 }: {
   values: OnboardingValues;
   errors: ProfileErrors;
   onChange: (name: keyof ProfileFormValues, value: string) => void;
+  fields?: (keyof OnboardingValues)[];
 }) {
+  const show = (name: keyof OnboardingValues) =>
+    !fields || fields.includes(name);
   function props(name: keyof OnboardingValues) {
     return {
       id: name,
@@ -69,57 +76,67 @@ export function PersonalFields({
   }
   return (
     <div className={styles.grid}>
-      <Field name="first_name" label="First name *" error={errors.first_name}>
-        <input
-          {...props("first_name")}
-          maxLength={254}
-          autoComplete="given-name"
-        />
-      </Field>
-      <Field name="last_name" label="Last name *" error={errors.last_name}>
-        <input
-          {...props("last_name")}
-          maxLength={254}
-          autoComplete="family-name"
-        />
-      </Field>
-      <Field name="email" label="Contact email *" error={errors.email}>
-        <input
-          {...props("email")}
-          type="email"
-          maxLength={254}
-          autoComplete="email"
-        />
-        <p className={styles.hint}>
-          Updating this address does not change your login email.
-        </p>
-      </Field>
-      <Field
-        name="phone_number"
-        label="Phone number *"
-        error={errors.phone_number}
-      >
-        <input
-          {...props("phone_number")}
-          type="tel"
-          maxLength={40}
-          autoComplete="tel"
-        />
-      </Field>
-      <Field
-        name="affiliation"
-        label="Affiliation *"
-        error={errors.affiliation}
-      >
-        <select {...props("affiliation")}>
-          <option value="">Select an affiliation</option>
-          {AFFILIATIONS.map(option => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {show("first_name") && (
+        <Field name="first_name" label="First name *" error={errors.first_name}>
+          <input
+            {...props("first_name")}
+            maxLength={254}
+            autoComplete="given-name"
+          />
+        </Field>
+      )}
+      {show("last_name") && (
+        <Field name="last_name" label="Last name *" error={errors.last_name}>
+          <input
+            {...props("last_name")}
+            maxLength={254}
+            autoComplete="family-name"
+          />
+        </Field>
+      )}
+      {show("email") && (
+        <Field name="email" label="Contact email *" error={errors.email}>
+          <input
+            {...props("email")}
+            type="email"
+            maxLength={254}
+            autoComplete="email"
+          />
+          <p className={styles.hint}>
+            Updating this address does not change your login email.
+          </p>
+        </Field>
+      )}
+      {show("phone_number") && (
+        <Field
+          name="phone_number"
+          label="Phone number *"
+          error={errors.phone_number}
+        >
+          <input
+            {...props("phone_number")}
+            type="tel"
+            maxLength={40}
+            autoComplete="tel"
+          />
+        </Field>
+      )}
+      {show("affiliation") && (
+        <Field
+          name="affiliation"
+          label="Affiliation *"
+          error={errors.affiliation}
+        >
+          <select {...props("affiliation")}>
+            <option value="">Select an affiliation</option>
+            {AFFILIATIONS.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
     </div>
   );
 }

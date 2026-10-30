@@ -4,6 +4,7 @@ import supabase from "../client";
 export const {
   fetchProfile: fetchParticipantProfile,
   createProfile: createParticipantProfile,
+  saveMilitaryBranch,
   saveProfile: saveParticipantProfile,
   listDocuments,
   uploadDocument,

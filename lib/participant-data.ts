@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  MilitaryBranch,
   OnboardingInput,
   ParticipantProfile,
   ParticipantProfileInput,
@@ -122,6 +123,22 @@ export function createParticipantData(client: SupabaseClient) {
     return data;
   }
 
+  /** Saves the optional branch from onboarding; it cannot be set when the row is inserted. */
+  async function saveMilitaryBranch(
+    userId: string,
+    branch: MilitaryBranch,
+  ): Promise<void> {
+    await requireUser(userId);
+    const { error } = await client
+      .from("participants")
+      .update({ military_branch: branch })
+      .eq("id", userId)
+      .select("id")
+      .single();
+    // Requiring a returned row prevents denied/no-op writes looking successful.
+    if (error) throw error;
+  }
+
   async function saveProfile(
     userId: string,
     profile: ParticipantProfileInput,
@@ -213,6 +230,7 @@ export function createParticipantData(client: SupabaseClient) {
   return {
     fetchProfile,
     createProfile,
+    saveMilitaryBranch,
     saveProfile,
     listDocuments,
     uploadDocument,
