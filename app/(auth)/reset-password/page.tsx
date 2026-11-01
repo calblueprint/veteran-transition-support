@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { startPasswordRecovery, updatePassword } from "../updatePassword";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -21,28 +22,21 @@ export default function ResetPasswordPage() {
 
     async function checkRecoverySession() {
       try {
-        const url = new URL(window.location.href);
-        const code = url.searchParams.get("code");
+        const result = await startPasswordRecovery(window.location.href);
+        // Remove the one-time token from the address bar/history after use.
+        window.history.replaceState(
+          window.history.state,
+          "",
+          window.location.pathname,
+        );
+        if (!active) return;
 
-        if (code) {
-          await supabase.auth.exchangeCodeForSession(code);
-        }
-
-        const { data, error: sessionError } = await supabase.auth.getUser();
-
-        if (!active) {
-          return;
-        }
-
-        if (!sessionError && data.user) {
+        if (result.success) {
           setAuthorized(true);
           setError("");
         } else {
           setAuthorized(false);
-          setError(
-            "Your reset link is invalid or expired. " +
-              "Please request a new one.",
-          );
+          setError(result.error.message);
         }
       } catch {
         if (active) {
@@ -82,12 +76,9 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password,
-      });
-
-      if (updateError) {
-        setError(updateError.message);
+      const result = await updatePassword(password);
+      if (!result.success) {
+        setError(result.error.message);
         return;
       }
 
