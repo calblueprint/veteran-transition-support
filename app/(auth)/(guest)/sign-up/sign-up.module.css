@@ -1,0 +1,285 @@
+.page {
+  --navy: #0b2649;
+  --gold: #c89b3c;
+  --red: #b01116;
+  --body: #243b54;
+  --muted: #5a6b82;
+  --border: #d5deea;
+  min-height: 100svh;
+  background: #fff;
+  color: var(--body);
+  font-size: 16px;
+  color-scheme: light;
+}
+
+.page button,
+.page input {
+  font: inherit;
+}
+
+.page :is(a, button, input):focus-visible {
+  outline: 3px solid #2074a5;
+  outline-offset: 3px;
+}
+
+.page a,
+.textButton,
+.legalLink {
+  color: var(--navy);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.page a:hover,
+.textButton:hover,
+.legalLink:hover {
+  text-decoration-thickness: 2px;
+}
+
+.page button {
+  cursor: pointer;
+}
+
+.navbar {
+  height: 96px;
+  padding: 0 48px;
+  display: flex;
+  align-items: center;
+  background: var(--navy);
+  border-bottom: 3px solid var(--gold);
+}
+
+.logo {
+  display: block;
+  width: 87px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.main {
+  padding: max(48px, calc((100svh - 500px) / 2 - 96px)) 24px 64px;
+}
+
+.content {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.heading h1 {
+  color: var(--navy);
+  font-family: var(--font-sign-up-heading), sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 44px;
+  letter-spacing: 0.72px;
+  text-transform: uppercase;
+}
+
+.goldRule {
+  width: 64px;
+  height: 3px;
+  background: var(--gold);
+}
+
+.heading > p {
+  color: var(--muted);
+  line-height: 24px;
+}
+
+.heading a,
+.fieldError a {
+  font-weight: 500;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 17px;
+}
+
+.field > input,
+.passwordBox {
+  width: 100%;
+  height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.field input {
+  min-width: 0;
+  padding: 0 14px;
+  color: var(--body);
+  line-height: normal;
+}
+
+.field input::placeholder {
+  color: #8c99ab;
+  opacity: 1;
+}
+
+.field > input[aria-invalid="true"],
+.passwordBox[data-invalid="true"] {
+  border: 1.5px solid var(--red);
+}
+
+.passwordBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 14px;
+}
+
+.passwordBox input {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.passwordBox:focus-within {
+  outline: 3px solid #2074a5;
+  outline-offset: 3px;
+}
+
+.passwordBox input:focus-visible {
+  outline: none;
+}
+
+.page .textButton {
+  flex-shrink: 0;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.hint,
+.fieldError {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.hint {
+  color: var(--muted);
+}
+
+.fieldError {
+  color: var(--red);
+}
+
+.success {
+  color: #176336;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.page .submitButton {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 24px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--red);
+  color: #fff;
+  font-weight: 600;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: #920e13;
+}
+
+.page :disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.terms {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 20px;
+  text-align: center;
+}
+
+.legalLink {
+  border: 0;
+  background: transparent;
+}
+
+.dialog {
+  position: fixed;
+  inset: 0;
+  width: calc(100% - 40px);
+  max-width: 480px;
+  max-height: calc(100% - 40px);
+  margin: auto;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--body);
+}
+
+.dialog::backdrop {
+  background: #0b264966;
+}
+
+.dialog h2 {
+  color: var(--navy);
+}
+
+.dialog p {
+  margin: 16px 0 24px;
+  line-height: 24px;
+}
+
+@media (max-width: 600px) {
+  .navbar {
+    padding: 0 24px;
+  }
+
+  .main {
+    padding: 48px 24px;
+  }
+
+  .heading h1 {
+    font-size: 32px;
+    line-height: 40px;
+    letter-spacing: 0.64px;
+  }
+
+  .page .legalLink {
+    min-height: 44px;
+  }
+}
