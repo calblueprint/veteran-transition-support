@@ -23,3 +23,21 @@ export function validateSignUp(email: string, password: string) {
 
   return { email: normalizedEmail, errors, valid: !Object.keys(errors).length };
 }
+
+/** Supabase may return an obscured user with no identities for a duplicate signup. */
+export function getSignUpOutcome(
+  data: {
+    user: { identities?: readonly unknown[] } | null;
+    session: object | null;
+  },
+  error: { code?: string } | null = null,
+) {
+  if (error?.code === "user_already_exists" || error?.code === "email_exists") {
+    return "existing-account";
+  }
+  if (error) return "auth-error";
+  if (data.session) return "signed-in";
+  if (!data.user) return "unexpected-response";
+  if (data.user.identities?.length === 0) return "existing-account";
+  return "confirmation-required";
+}

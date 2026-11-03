@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
-import { validateSignUp } from "@/lib/sign-up";
+import { getSignUpOutcome, validateSignUp } from "@/lib/sign-up";
 import { supabase } from "@/lib/supabase";
 import styles from "./auth.module.css";
 
@@ -54,14 +54,15 @@ export function SignUpForm() {
         options: { emailRedirectTo: `${window.location.origin}/profile` },
       });
 
+      const outcome = getSignUpOutcome(data, authError);
+      if (outcome === "existing-account") {
+        setAccountExists(true);
+        emailInput.current?.focus();
+        return;
+      }
+
       if (authError) {
-        if (
-          authError.code === "user_already_exists" ||
-          authError.code === "email_exists"
-        ) {
-          setAccountExists(true);
-          emailInput.current?.focus();
-        } else if (authError.code === "weak_password") {
+        if (authError.code === "weak_password") {
           setErrors({ password: ["Please choose a stronger password."] });
           passwordInput.current?.focus();
         } else if (authError.status === 429) {
@@ -72,17 +73,14 @@ export function SignUpForm() {
         return;
       }
 
-      // Keep Supabase's privacy-preserving response when identity is obscured.
-      if (data.user?.identities?.length === 0) {
-        setMessage(
-          "If this email is eligible, a confirmation link will be sent.",
-        );
-      } else if (data.session) {
+      if (outcome === "signed-in") {
         router.replace("/onboarding");
-      } else {
+      } else if (outcome === "confirmation-required") {
         setMessage(
           "Sign-up request successful! Check your email to confirm your account.",
         );
+      } else {
+        setError("Something went wrong. Please try again.");
       }
     } catch {
       setError("Something went wrong. Please try again.");
