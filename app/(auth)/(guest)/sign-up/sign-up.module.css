@@ -77,7 +77,7 @@
 
 .heading h1 {
   color: var(--navy);
-  font-family: var(--font-sign-up-heading), sans-serif;
+  font-family: var(--font-auth-heading), sans-serif;
   font-size: 36px;
   font-weight: 700;
   line-height: 44px;

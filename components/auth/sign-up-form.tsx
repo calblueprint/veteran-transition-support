@@ -3,13 +3,12 @@
 import type { SignUpErrors } from "@/lib/sign-up";
 import type { FormEvent } from "react";
 import { useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import styles from "@/app/(auth)/sign-up/sign-up.module.css";
 import { Button } from "@/components/Button";
 import { validateSignUp } from "@/lib/sign-up";
 import { supabase } from "@/lib/supabase";
+import styles from "./auth.module.css";
 
 export function SignUpForm() {
   const router = useRouter();
@@ -100,16 +99,6 @@ export function SignUpForm() {
 
   return (
     <>
-      <header className={styles.navbar}>
-        <Image
-          className={styles.logo}
-          src="/images/vts-logo.png"
-          alt="Veteran Transition Support"
-          width={87}
-          height={64}
-          priority
-        />
-      </header>
       <main className={styles.main}>
         <section className={styles.content} aria-labelledby="sign-up-heading">
           <div className={styles.heading}>
