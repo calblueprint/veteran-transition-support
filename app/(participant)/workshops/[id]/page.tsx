@@ -2,9 +2,11 @@
 
 import type { Workshop } from "@/types/workshop";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   isRegisteredForWorkshop,
+  isVerifiedParticipant,
   registerForWorkshop,
 } from "@/actions/supabase/queries/registrations";
 import {
@@ -24,6 +26,7 @@ export default function WorkshopDetailsPage() {
   );
   const [registeredCount, setRegisteredCount] = useState(0);
   const [registered, setRegistered] = useState(false);
+  const [verified, setVerified] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -38,17 +41,19 @@ export default function WorkshopDetailsPage() {
       try {
         const data = await fetchWorkshop(id);
         // Invalid or missing workshops must not trigger registration queries.
-        const [alreadyRegistered, count] = data
+        const [alreadyRegistered, count, isVerified] = data
           ? await Promise.all([
               isRegisteredForWorkshop(id),
               fetchWorkshopRegistrationCount(id),
+              isVerifiedParticipant(),
             ])
-          : ([false, 0] as const);
+          : ([false, 0, false] as const);
 
         if (!ignore) {
           setWorkshop(data);
           setRegistered(alreadyRegistered);
           setRegisteredCount(count);
+          setVerified(isVerified);
         }
       } catch (err) {
         if (!ignore) {
@@ -151,6 +156,12 @@ export default function WorkshopDetailsPage() {
 
       {registered ? (
         <p role="status">You’re registered for this workshop.</p>
+      ) : !verified ? (
+        // Unverified users can't sign up; send them to verify instead.
+        <p role="status">
+          You need to verify your account to register.{" "}
+          <Link href="/profile">Verify on your profile</Link>
+        </p>
       ) : (
         <button
           type="button"
