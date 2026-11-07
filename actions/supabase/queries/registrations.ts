@@ -22,7 +22,7 @@ export async function registerForWorkshop(workshopId: string): Promise<void> {
 
   const { data: participant, error: profileError } = await supabase
     .from("participants")
-    .select("id")
+    .select("id, verification_status")
     .eq("id", user.id)
     .maybeSingle();
   if (profileError)
@@ -33,6 +33,9 @@ export async function registerForWorkshop(workshopId: string): Promise<void> {
     throw new Error(
       "Please complete your participant profile before registering for a workshop.",
     );
+  // Only verified participants can sign up, even if the button was reached.
+  if (!participant.verification_status)
+    throw new Error("Please verify your account before registering.");
 
   // Only active registrations are unique; cancelled history is preserved.
   const { error } = await supabase.from("registrations").insert({
@@ -47,6 +50,21 @@ export async function registerForWorkshop(workshopId: string): Promise<void> {
       ),
     );
   }
+}
+
+// Used to decide whether to show the Register button or a prompt to verify.
+export async function isVerifiedParticipant(): Promise<boolean> {
+  const user = await getCurrentUser();
+  if (!user) return false;
+
+  const { data, error } = await supabase
+    .from("participants")
+    .select("verification_status")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (error)
+    throw new Error("Could not check your verification. Please try again.");
+  return data?.verification_status === true;
 }
 
 export async function isRegisteredForWorkshop(

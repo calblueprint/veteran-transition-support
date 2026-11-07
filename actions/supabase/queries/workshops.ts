@@ -14,6 +14,19 @@ export async function fetchWorkshops(): Promise<Workshop[]> {
   return data;
 }
 
+// Only workshops that haven't started yet, soonest first. Workshops without a
+// start date are left out because we can't tell if they're upcoming.
+export async function fetchUpcomingWorkshops(): Promise<Workshop[]> {
+  const { data, error } = await supabase
+    .from("workshops")
+    .select("*")
+    .gte("start_date", new Date().toISOString())
+    .order("start_date", { ascending: true });
+
+  if (error) throw new Error("Could not load events. Please try again.");
+  return data;
+}
+
 export async function fetchWorkshop(id: string): Promise<Workshop | null> {
   const { data, error } = await supabase
     .from("workshops")
