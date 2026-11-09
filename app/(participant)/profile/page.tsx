@@ -7,6 +7,7 @@ import type {
 } from "@/lib/participant-profile";
 import type { ChangeEvent, FormEvent } from "react";
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { saveParticipantProfile } from "@/actions/supabase/queries/participants";
 import { DocumentUploads } from "@/components/participant/document-uploads";
@@ -314,6 +315,7 @@ export default function ProfilePage() {
       <header className={styles.header}>
         <p className={styles.eyebrow}>Veteran Transition Support</p>
         <h1>Participant profile</h1>
+        <Link href="/my-events">My Events</Link>
         <p>
           View and edit your personal information, service history, and
           documents.
