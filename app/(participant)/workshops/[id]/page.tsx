@@ -132,6 +132,9 @@ export default function WorkshopDetailsPage() {
 
   return (
     <main>
+      <nav aria-label="Participant navigation">
+        <Link href="/my-events">My Events</Link>
+      </nav>
       <h1>{workshop.name}</h1>
 
       <p>{workshop.description ?? "No description provided."}</p>

@@ -50,6 +50,7 @@ export default function WorkshopsPage() {
 
   return (
     <main>
+      <Link href="/my-events">My Events</Link>
       <h1>Workshops</h1>
 
       {workshops.length === 0 ? (
@@ -69,7 +70,11 @@ export default function WorkshopsPage() {
           <tbody>
             {workshops.map(workshop => (
               <tr key={workshop.id}>
-                <td>{workshop.name}</td>
+                <td>
+                  <Link href={`/workshops/${workshop.id}`}>
+                    {workshop.name}
+                  </Link>
+                </td>
                 <td>{workshop.start_date ?? "Not set"}</td>
                 <td>{workshop.end_date ?? "Not set"}</td>
                 <td>{workshop.capacity ?? "Not set"}</td>
