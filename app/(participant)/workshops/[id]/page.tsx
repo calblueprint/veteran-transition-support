@@ -2,6 +2,7 @@
 
 import type { Workshop } from "@/types/workshop";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   isRegisteredForWorkshop,
@@ -127,6 +128,9 @@ export default function WorkshopDetailsPage() {
 
   return (
     <main>
+      <nav aria-label="Participant navigation">
+        <Link href="/my-events">My Events</Link>
+      </nav>
       <h1>{workshop.name}</h1>
 
       <p>{workshop.description ?? "No description provided."}</p>
