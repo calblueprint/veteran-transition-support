@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const expiredLink =
+    searchParams.get("error") === "The email link is invalid or expired.";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,6 +24,7 @@ export default function LoginPage() {
     try {
       const normalizedEmail = email.trim().toLowerCase();
 
+      // RESOLVED: removed the client-side participants lookup (the check-email API route below replaces it)
       const { error: authError } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password,
@@ -40,6 +45,8 @@ export default function LoginPage() {
       }
 
       router.replace("/profile");
+      // RESOLVED: kept router.refresh() so server components see the new session
+      router.refresh();
     } catch {
       setError("Unable to log in. Please try again.");
     } finally {
@@ -58,6 +65,20 @@ export default function LoginPage() {
       <h1>Log In</h1>
       <p>Welcome back! Enter your credentials.</p>
 
+      {expiredLink && (
+        <div role="alert">
+          <p style={{ color: "crimson" }}>
+            The email link is invalid or expired.
+          </p>
+          <p>
+            If you were resetting your password,{" "}
+            <Link href="/forgot-password">request another reset link</Link>. If
+            you were confirming your email,{" "}
+            <Link href="/sign-up">return to sign-up</Link>.
+          </p>
+        </div>
+      )}
+
       <form
         onSubmit={event => {
           event.preventDefault();
@@ -75,7 +96,11 @@ export default function LoginPage() {
             value={email}
             onChange={event => setEmail(event.target.value)}
             required
-            style={{ display: "block", width: "100%", padding: 10 }}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: 10,
+            }}
           />
         </div>
 
@@ -90,9 +115,17 @@ export default function LoginPage() {
             value={password}
             onChange={event => setPassword(event.target.value)}
             required
-            style={{ display: "block", width: "100%", padding: 10 }}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: 10,
+            }}
           />
         </div>
+
+        <p>
+          <Link href="/forgot-password">Forgot password?</Link>
+        </p>
 
         {error && (
           <p role="alert" style={{ color: "crimson" }}>
@@ -109,5 +142,13 @@ export default function LoginPage() {
         Don&apos;t have an account? <Link href="/sign-up">Sign up</Link>
       </p>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<p>Loading login...</p>}>
+      <LoginForm />
+    </Suspense>
   );
 }

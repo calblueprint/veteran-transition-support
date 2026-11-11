@@ -41,7 +41,7 @@ export default function SignUpPage() {
 
       if (authError) {
         if (authError.code === "user_already_exists") {
-          setError("This email is already registered. Please log in.");
+          setMessage("Check your email to continue.");
         } else if (authError.code === "weak_password") {
           setError("Please choose a stronger password.");
         } else if (authError.status === 429) {
@@ -49,19 +49,18 @@ export default function SignUpPage() {
         } else {
           setError(authError.message);
         }
+
         return;
       }
 
       if (data.user?.identities?.length === 0) {
-        setMessage(
-          "If this email is eligible, a confirmation link will be sent.",
-        );
+        setMessage("Check your email to continue.");
       } else if (data.session) {
+        // RESOLVED: kept HEAD (main) redirect to /onboarding, plus router.refresh() from this commit
         router.replace("/onboarding");
+        router.refresh();
       } else {
-        setMessage(
-          "Sign-up request successful! Check your email to confirm your account.",
-        );
+        setMessage("Check your email to continue.");
       }
     } catch {
       setError("Something went wrong. Please try again.");
@@ -98,7 +97,11 @@ export default function SignUpPage() {
             value={email}
             onChange={event => setEmail(event.target.value)}
             required
-            style={{ display: "block", width: "100%", padding: 10 }}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: 10,
+            }}
           />
         </div>
 
@@ -114,7 +117,11 @@ export default function SignUpPage() {
             onChange={event => setPassword(event.target.value)}
             minLength={8}
             required
-            style={{ display: "block", width: "100%", padding: 10 }}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: 10,
+            }}
           />
         </div>
 

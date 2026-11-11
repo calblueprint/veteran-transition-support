@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 
 if (
   !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -9,7 +9,8 @@ if (
   );
 }
 
-const supabase = createClient(
+// CHANGED: this file owns the client and imports nothing from "@/lib/supabase"
+const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 );
