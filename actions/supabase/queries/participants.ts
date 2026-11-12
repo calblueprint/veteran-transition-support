@@ -1,4 +1,3 @@
-// RESOLVED: type imports first, then the factory and client
 import type {
   Participant,
   ParticipantCertification,
@@ -8,7 +7,6 @@ import type {
 import { createParticipantData } from "@/lib/participant-data";
 import supabase from "../client";
 
-// RESOLVED: kept HEAD (main) factory exports, including the ID verification functions
 export const {
   fetchProfile: fetchParticipantProfile,
   createProfile: createParticipantProfile,
@@ -21,10 +19,6 @@ export const {
   submitIdVerification,
   fetchLatestIdVerification,
 } = createParticipantData(supabase);
-
-// RESOLVED: dropped this commit's TEST_PARTICIPANT_ID, PROFILE_COLUMNS,
-// fetchParticipantProfile and saveParticipantProfile (replaced by the factory on main).
-// Kept the four admin functions below, which are new in this commit.
 
 export async function fetchParticipants(
   search = "",
