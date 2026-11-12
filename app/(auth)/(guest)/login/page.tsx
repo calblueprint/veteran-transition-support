@@ -24,7 +24,6 @@ function LoginForm() {
     try {
       const normalizedEmail = email.trim().toLowerCase();
 
-      // RESOLVED: removed the client-side participants lookup (the check-email API route below replaces it)
       const { error: authError } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password,
@@ -45,7 +44,6 @@ function LoginForm() {
       }
 
       router.replace("/profile");
-      // RESOLVED: kept router.refresh() so server components see the new session
       router.refresh();
     } catch {
       setError("Unable to log in. Please try again.");

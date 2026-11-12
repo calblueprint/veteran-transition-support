@@ -2,12 +2,13 @@
 
 import type { User } from "@supabase/supabase-js";
 import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type AuthContextType = {
   user: User | null;
+  isAdmin: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
 };
@@ -18,7 +19,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const requestId = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -30,12 +34,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setUser(session?.user ?? null);
-      setLoading(false);
+      const currentRequest = ++requestId.current;
+      const currentUser = session?.user ?? null;
+
+      setUser(currentUser);
+      setIsAdmin(false);
+
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      async function checkAdminStatus() {
+        try {
+          const response = await fetch("/api/auth/admin-status", {
+            method: "GET",
+            cache: "no-store",
+          });
+
+          if (!response.ok) {
+            throw new Error("Unable to check admin status.");
+          }
+
+          const result: { isAdmin: boolean } = await response.json();
+
+          if (active && currentRequest === requestId.current) {
+            setIsAdmin(result.isAdmin);
+          }
+        } catch (error) {
+          console.error("Admin status check failed:", error);
+
+          if (active && currentRequest === requestId.current) {
+            setIsAdmin(false);
+          }
+        } finally {
+          if (active && currentRequest === requestId.current) {
+            setLoading(false);
+          }
+        }
+      }
+
+      void checkAdminStatus();
     });
 
     return () => {
       active = false;
+      requestId.current += 1;
       subscription.unsubscribe();
     };
   }, []);
@@ -47,7 +93,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error;
     }
 
+    requestId.current += 1;
     setUser(null);
+    setIsAdmin(false);
+    setLoading(false);
+
     router.replace("/login");
     router.refresh();
   }
@@ -56,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        isAdmin,
         loading,
         signOut,
       }}
