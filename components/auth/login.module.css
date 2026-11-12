@@ -1,0 +1,55 @@
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.labelRow .forgotPassword {
+  border: 0;
+  background: transparent;
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 17px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.forgotPassword:hover {
+  text-decoration-thickness: 2px;
+}
+
+.errorBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid #f0b8ba;
+  border-radius: 6px;
+  background: #fceded;
+  color: var(--red);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.errorIcon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--red);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+@media (pointer: coarse) {
+  .labelRow .forgotPassword {
+    min-height: 44px;
+  }
+}
