@@ -1,0 +1,246 @@
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 40px 28px 72px;
+  color: #1a2925;
+}
+.page a {
+  color: #236448;
+  text-underline-offset: 3px;
+}
+.back {
+  display: inline-block;
+  margin-bottom: 28px;
+  font-size: 14px;
+}
+.header {
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+}
+.eyebrow {
+  color: #49685d;
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+.header h1 {
+  font-size: clamp(26px, 4vw, 36px);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.meta {
+  color: #58655f;
+  margin-top: 12px;
+  line-height: 1.6;
+}
+.actions,
+.rowActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.page button {
+  border: 1px solid #9aafa4;
+  border-radius: 6px;
+  background: white;
+  color: #174a36;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 40px;
+}
+.page button:hover:not(:disabled) {
+  background: #eaf3ed;
+}
+.page button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.page button[aria-pressed="true"] {
+  opacity: 1;
+  background: #edf5ef;
+  border-color: #8aa996;
+}
+.page button:focus-visible,
+.page a:focus-visible {
+  outline: 3px solid #297752;
+  outline-offset: 3px;
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border: 1px solid #d9e2dc;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f7faf8;
+}
+.stats > div {
+  padding: 22px 20px;
+  border-right: 1px solid #d9e2dc;
+}
+.stats > div:last-child {
+  border: 0;
+}
+.stats dt {
+  color: #52635a;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+.stats dd {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.stats span {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #58655f;
+}
+.note {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #58655f;
+  margin: 14px 0 30px;
+}
+.roster {
+  border: 1px solid #d9e2dc;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.rosterHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 22px;
+}
+.rosterHeader h2 {
+  font-size: 20px;
+}
+.rosterHeader span {
+  color: #58655f;
+  font-size: 13px;
+}
+.tableScroll {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+.table thead {
+  color: #53645b;
+  background: #f7faf8;
+  font-size: 12px;
+}
+.table th,
+.table td {
+  padding: 18px 22px;
+  border-top: 1px solid #e1e7e3;
+}
+.table tbody th {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  min-width: 130px;
+}
+.badge {
+  display: inline-block;
+  border-radius: 5px;
+  padding: 6px 9px;
+  background: #f0f2f1;
+  color: #4b5a51;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.badge[data-status="attended"] {
+  color: #15522f;
+  background: #e2f3e7;
+}
+.badge[data-status="no_show"] {
+  color: #8b3f20;
+  background: #fff0e7;
+}
+.badge[data-status="cancelled"] {
+  color: #605867;
+  background: #f0edf2;
+}
+.muted {
+  color: #69716d;
+  font-size: 13px;
+}
+.empty {
+  padding: 8px 22px 28px;
+  line-height: 1.6;
+  color: #58655f;
+}
+.success,
+.error {
+  padding: 14px 16px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.success {
+  background: #e9f5ed;
+  color: #17522e;
+}
+.error {
+  background: #fff0ed;
+  color: #8c3024;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+@media (max-width: 760px) {
+  .page {
+    padding: 28px 16px 48px;
+  }
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stats > div {
+    border-bottom: 1px solid #d9e2dc;
+    padding: 18px;
+  }
+  .stats > div:nth-child(even) {
+    border-right: 0;
+  }
+  .stats > div:last-child {
+    grid-column: 1 / -1;
+  }
+  .table th,
+  .table td {
+    padding: 14px 12px;
+  }
+  .table tbody th {
+    min-width: 100px;
+  }
+  .rowActions {
+    min-width: 96px;
+  }
+  .rowActions button {
+    width: 100%;
+  }
+}

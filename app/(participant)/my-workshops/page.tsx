@@ -61,7 +61,7 @@ export default function MyWorkshopsPage() {
           {workshops.map(workshop => (
             <li key={workshop.id}>
               <h2>
-                <Link href={`/workshops/${workshop.id}`}>{workshop.name}</Link>
+                <Link href={`/events/${workshop.id}`}>{workshop.name}</Link>
               </h2>
               <p>Start date: {workshop.start_date ?? "Not set"}</p>
               <p>End date: {workshop.end_date ?? "Not set"}</p>
