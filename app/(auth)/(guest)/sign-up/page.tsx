@@ -56,7 +56,6 @@ export default function SignUpPage() {
       if (data.user?.identities?.length === 0) {
         setMessage("Check your email to continue.");
       } else if (data.session) {
-        // RESOLVED: kept HEAD (main) redirect to /onboarding, plus router.refresh() from this commit
         router.replace("/onboarding");
         router.refresh();
       } else {

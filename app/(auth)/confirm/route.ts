@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   const safeNext =
     next.startsWith("/") && !next.startsWith("//") ? next : "/profile";
 
+  // RESOLVED: kept HEAD (main) origin check on the resolved redirect URL
   const resolvedUrl = new URL(safeNext, origin);
 
   const redirectUrl =
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!error) {
+      // RESOLVED: kept HEAD (main) redirectUrl
       return NextResponse.redirect(redirectUrl);
     }
   }
