@@ -7,6 +7,14 @@ export type Workshop = {
   eventbrite_event_id: string | null;
   capacity: number | null;
   location: string | null;
+  series_id: string | null;
 };
 
 export type CreateWorkshopInput = Omit<Workshop, "id" | "eventbrite_event_id">;
+
+export type WorkshopSeries = {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+};

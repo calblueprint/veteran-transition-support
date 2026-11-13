@@ -4,6 +4,7 @@ import type { SubmitEvent } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createWorkshop } from "@/actions/supabase/queries/workshops";
+import { SeriesSelect } from "@/components/admin/series-select";
 import {
   MAX_WORKSHOP_CAPACITY,
   validateWorkshopForm,
@@ -81,6 +82,8 @@ export default function NewWorkshopPage() {
           <label htmlFor="location">Location</label>
           <input id="location" name="location" type="text" />
         </div>
+
+        <SeriesSelect />
 
         {error && <p role="alert">{error}</p>}
         <button type="submit" disabled={submitting}>
