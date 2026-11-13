@@ -51,6 +51,7 @@ export default function WorkshopsPage() {
   return (
     <main>
       <h1>Workshops</h1>
+      <Link href="/series">Manage series</Link>
 
       {workshops.length === 0 ? (
         <p>No workshops yet.</p>
