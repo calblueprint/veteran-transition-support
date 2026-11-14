@@ -1,9 +1,12 @@
 "use client";
 
+import type { WorkshopRegistrationEligibility } from "@/actions/supabase/queries/registrations";
 import type { Workshop } from "@/types/workshop";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
+  fetchWorkshopRegistrationEligibility,
   isRegisteredForWorkshop,
   registerForWorkshop,
 } from "@/actions/supabase/queries/registrations";
@@ -11,6 +14,7 @@ import {
   fetchWorkshop,
   fetchWorkshopRegistrationCount,
 } from "@/actions/supabase/queries/workshops";
+import { UNVERIFIED_WORKSHOP_MESSAGE } from "@/lib/workshop-errors";
 
 export default function WorkshopDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +28,8 @@ export default function WorkshopDetailsPage() {
   );
   const [registeredCount, setRegisteredCount] = useState(0);
   const [registered, setRegistered] = useState(false);
+  const [eligibility, setEligibility] =
+    useState<WorkshopRegistrationEligibility | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -34,21 +40,24 @@ export default function WorkshopDetailsPage() {
       setWorkshop(null);
       setRegistered(false);
       setRegistrationError(null);
+      setEligibility(null);
 
       try {
         const data = await fetchWorkshop(id);
         // Invalid or missing workshops must not trigger registration queries.
-        const [alreadyRegistered, count] = data
+        const [alreadyRegistered, count, status] = data
           ? await Promise.all([
               isRegisteredForWorkshop(id),
               fetchWorkshopRegistrationCount(id),
+              fetchWorkshopRegistrationEligibility(),
             ])
-          : ([false, 0] as const);
+          : ([false, 0, null] as const);
 
         if (!ignore) {
           setWorkshop(data);
           setRegistered(alreadyRegistered);
           setRegisteredCount(count);
+          setEligibility(status);
         }
       } catch (err) {
         if (!ignore) {
@@ -63,7 +72,7 @@ export default function WorkshopDetailsPage() {
       }
     }
 
-    loadWorkshop();
+    void loadWorkshop();
 
     return () => {
       ignore = true;
@@ -74,6 +83,7 @@ export default function WorkshopDetailsPage() {
     if (
       registering ||
       registered ||
+      eligibility !== "verified" ||
       !workshop ||
       (workshop.capacity !== null && registeredCount >= workshop.capacity)
     )
@@ -91,13 +101,20 @@ export default function WorkshopDetailsPage() {
         err instanceof Error ? err.message : "Could not register for workshop.",
       );
     } finally {
-      // Refresh capacity after success or a race for the last available spot.
+      // Refresh capacity and eligibility after success or a racing change.
       try {
         const latest = await fetchWorkshop(id);
-        const count = latest ? await fetchWorkshopRegistrationCount(id) : 0;
+        const [count, status, alreadyRegistered] = latest
+          ? await Promise.all([
+              fetchWorkshopRegistrationCount(id),
+              fetchWorkshopRegistrationEligibility(),
+              isRegisteredForWorkshop(id),
+            ])
+          : ([0, null, false] as const);
         setWorkshop(latest);
         setRegisteredCount(count);
-        setRegistered(latest ? await isRegisteredForWorkshop(id) : false);
+        setRegistered(alreadyRegistered);
+        setEligibility(status);
       } catch {
         setError(
           "Could not refresh workshop availability. Please reload the page.",
@@ -108,7 +125,7 @@ export default function WorkshopDetailsPage() {
   }
 
   if (loading) {
-    return <p>Loading workshop...</p>;
+    return <p role="status">Loading workshop...</p>;
   }
 
   if (error) {
@@ -149,13 +166,27 @@ export default function WorkshopDetailsPage() {
 
       {registrationError && <p role="alert">{registrationError}</p>}
 
-      {registered ? (
+      {eligibility === "unverified" ? (
+        <p role="status">
+          {UNVERIFIED_WORKSHOP_MESSAGE}{" "}
+          <Link href="/profile">Verify your profile</Link>.
+        </p>
+      ) : eligibility === "profile-missing" ? (
+        <p role="status">
+          Complete your <Link href="/onboarding">participant profile</Link>{" "}
+          before registering.
+        </p>
+      ) : eligibility === "signed-out" ? (
+        <p role="status">
+          <Link href="/login">Log in</Link> to register for this workshop.
+        </p>
+      ) : registered ? (
         <p role="status">You’re registered for this workshop.</p>
       ) : (
         <button
           type="button"
           onClick={handleRegister}
-          disabled={registering || full}
+          disabled={registering || full || eligibility !== "verified"}
         >
           {registering ? "Registering..." : full ? "Workshop full" : "Register"}
         </button>
