@@ -1,5 +1,8 @@
 type DatabaseError = { code: string; message: string };
 
+export const UNVERIFIED_WORKSHOP_MESSAGE =
+  "Your profile must be verified before you can register for workshops.";
+
 export function workshopErrorMessage(
   error: DatabaseError,
   fallback: string,
@@ -20,6 +23,8 @@ export function workshopErrorMessage(
       return "Capacity cannot be lower than the number of active registrations.";
     case "P1003":
       return "This workshop has registration records and cannot be deleted, including cancelled registrations.";
+    case "P1004":
+      return UNVERIFIED_WORKSHOP_MESSAGE;
     case "23514":
       return "Please check the workshop details. Capacity must be a non-negative whole number.";
     default:
