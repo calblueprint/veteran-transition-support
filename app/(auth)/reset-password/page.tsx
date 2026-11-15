@@ -64,7 +64,7 @@ export default function ResetPasswordPage() {
     setMessage("");
 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError("Use at least 8 characters and include a number or symbol.");
       return;
     }
 
@@ -133,7 +133,10 @@ export default function ResetPasswordPage() {
     >
       <h1>Reset Password</h1>
 
-      <p>Enter your new password below.</p>
+      <p>
+        Enter your new password below. Use at least 8 characters and include a
+        number or symbol.
+      </p>
 
       <form
         onSubmit={event => {

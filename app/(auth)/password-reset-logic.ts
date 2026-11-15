@@ -36,7 +36,7 @@ function failure(code: PasswordResetErrorCode): PasswordResetResult {
     invalid_email: "Enter a valid email address.",
     invalid_or_expired_link:
       "Your password reset link is invalid or expired. Request a new one.",
-    weak_password: "Choose a stronger password (at least 8 characters).",
+    weak_password: "Use at least 8 characters and include a number or symbol.",
     rate_limited: "Too many attempts. Please try again later.",
     network_error: "Unable to complete the request. Please try again.",
   };

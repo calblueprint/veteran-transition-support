@@ -1,5 +1,6 @@
 /** Logic-only reset tests: no live Supabase account or credentials required. */
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import {
   createPasswordResetLogic,
@@ -319,4 +320,31 @@ test("SIGNED_IN as a different user invalidates a verified recovery grant", asyn
   assert.equal(result.success, false);
   assert.equal(result.error.code, "invalid_or_expired_link");
   assert.equal(calls.update.length, 0);
+});
+
+test("login Forgot password links to the real recovery page", async () => {
+  const source = await readFile(
+    new URL("../components/auth/login-form.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /href="\/forgot-password"/);
+  assert.doesNotMatch(source, /This is a placeholder\. Password recovery/);
+});
+
+test("weak passwords show accurate guidance and can be retried", async () => {
+  const mock = mockAuth({
+    async updateUser({ password }) {
+      return password === "password"
+        ? { error: { code: "weak_password", status: 422 } }
+        : { error: null };
+    },
+  });
+  const { flow } = make(mock);
+  await flow.startPasswordRecovery(hashLink);
+  const rejected = await flow.updatePassword("password");
+  assert.equal(rejected.success, false);
+  assert.equal(rejected.error.code, "weak_password");
+  assert.match(rejected.error.message, /8 characters/);
+  assert.match(rejected.error.message, /number or symbol/);
+  assert.equal((await flow.updatePassword("password1")).success, true);
 });

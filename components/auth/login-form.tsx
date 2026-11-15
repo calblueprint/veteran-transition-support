@@ -22,7 +22,6 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const emailInput = useRef<HTMLInputElement>(null);
   const passwordInput = useRef<HTMLInputElement>(null);
-  const recoveryDialog = useRef<HTMLDialogElement>(null);
   const pending = useRef(false);
 
   function clearAuthError() {
@@ -139,13 +138,12 @@ export function LoginForm() {
               <div className={styles.field}>
                 <div className={loginStyles.labelRow}>
                   <label htmlFor="password">Password</label>
-                  <Button
+                  <Link
                     className={loginStyles.forgotPassword}
-                    type="button"
-                    onClick={() => recoveryDialog.current?.showModal()}
+                    href="/forgot-password"
                   >
                     Forgot password?
-                  </Button>
+                  </Link>
                 </div>
                 <div
                   className={styles.passwordBox}
@@ -213,20 +211,6 @@ export function LoginForm() {
           </form>
         </section>
       </main>
-      <dialog
-        ref={recoveryDialog}
-        className={styles.dialog}
-        aria-labelledby="recovery-heading"
-      >
-        <h2 id="recovery-heading">Forgot password?</h2>
-        <p>
-          This is a placeholder. Password recovery will be available here soon.
-          No reset email has been sent.
-        </p>
-        <form method="dialog">
-          <Button className={styles.submitButton}>Close</Button>
-        </form>
-      </dialog>
     </>
   );
 }
