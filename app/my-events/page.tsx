@@ -97,7 +97,7 @@ function MyEvents({ userId }: { userId: string }) {
     <main className={styles.page}>
       <nav className={styles.nav} aria-label="Participant navigation">
         <Link href="/profile">Profile</Link>
-        <Link href="/workshops">Browse events</Link>
+        <Link href="/events">Browse events</Link>
       </nav>
       <header className={styles.header}>
         <div>
@@ -136,7 +136,7 @@ function MyEvents({ userId }: { userId: string }) {
           {!events.length && (
             <p className={styles.empty}>
               You haven’t registered for any events yet.{" "}
-              <Link href="/workshops">Browse events</Link> to get started.
+              <Link href="/events">Browse events</Link> to get started.
             </p>
           )}
           {[
