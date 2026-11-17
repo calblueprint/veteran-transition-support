@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { requestPasswordReset } from "../forgotPassword";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -16,29 +16,12 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const normalizedEmail = email.trim().toLowerCase();
-
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-        normalizedEmail,
-        {
-          redirectTo: `${window.location.origin}/reset-password`,
-        },
-      );
-
-      if (resetError) {
-        if (resetError.status === 429) {
-          setError("Too many requests. Please try again later.");
-        } else {
-          setError("Unable to send reset email. Please try again.");
-        }
-
+      const result = await requestPasswordReset(email);
+      if (!result.success) {
+        setError(result.error.message);
         return;
       }
-
-      setMessage(
-        "If an account exists with this email, " +
-          "a password reset link has been sent.",
-      );
+      setMessage(result.message);
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

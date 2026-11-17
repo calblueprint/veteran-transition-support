@@ -209,7 +209,7 @@ export function SignUpForm() {
                   </div>
                 ) : (
                   <p id="password-hint" className={styles.hint}>
-                    Use at least 8 characters.
+                    Use at least 8 characters and 1 symbol.
                   </p>
                 )}
               </div>
