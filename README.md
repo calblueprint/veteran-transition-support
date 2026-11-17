@@ -69,3 +69,8 @@ pnpm dev
 ```
 
 Then, navigate to http://localhost:3000 to launch the web application.
+
+### Importing Zoom attendance
+
+See [Zoom attendance setup and verification](docs/zoom-attendance.md) for the
+server-only importer, required migration, and live meeting test procedure.
