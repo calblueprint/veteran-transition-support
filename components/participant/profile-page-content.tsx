@@ -301,7 +301,7 @@ function ProfileEditor({
           />
         </Link>
         <nav aria-label="Participant navigation" className={styles.navActions}>
-          <Link href="/my-workshops">My events</Link>
+          <Link href="/my-events">My events</Link>
           {unverified && (
             <Button
               className={styles.verifyButton}
