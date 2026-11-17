@@ -55,5 +55,7 @@ export function validateWorkshopForm(
     end_date: endDate || null,
     capacity,
     location: text("location") || null,
+    // Empty means "no series".
+    series_id: text("series_id") || null,
   };
 }

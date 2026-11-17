@@ -10,6 +10,7 @@ import {
   fetchWorkshopRegistrationCount,
   updateWorkshop,
 } from "@/actions/supabase/queries/workshops";
+import { SeriesSelect } from "@/components/admin/series-select";
 import {
   MAX_WORKSHOP_CAPACITY,
   validateWorkshopForm,
@@ -205,6 +206,8 @@ export default function EditWorkshopPage() {
               defaultValue={workshop.location ?? ""}
             />
           </div>
+
+          <SeriesSelect defaultValue={workshop.series_id ?? ""} />
 
           {saveError && <p role="alert">{saveError}</p>}
 
