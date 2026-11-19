@@ -51,6 +51,7 @@ export default function WorkshopsPage() {
   return (
     <main>
       <Link href="/my-events">My Events</Link>
+      <Link href="/verifications">Review ID verifications</Link>
       <h1>Workshops</h1>
 
       {workshops.length === 0 ? (

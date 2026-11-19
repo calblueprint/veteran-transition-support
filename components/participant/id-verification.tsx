@@ -1,6 +1,9 @@
 "use client";
 
-import type { IdVerificationStatus } from "@/lib/participant-data";
+import type {
+  IdVerificationStatus,
+  IdVerificationSummary,
+} from "@/lib/participant-data";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -18,8 +21,16 @@ const STATUS_LABELS: Record<IdVerificationStatus, string> = {
 };
 
 /** Shows the latest ID verification status and lets the participant upload an ID photo. */
-export function IdVerification({ userId }: { userId: string }) {
-  const [status, setStatus] = useState<IdVerificationStatus | null>(null);
+export function IdVerification({
+  userId,
+  verified = false,
+}: {
+  userId: string;
+  verified?: boolean;
+}) {
+  const [latest, setLatest] = useState<IdVerificationSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const status = verified ? "verified" : (latest?.verification_status ?? null);
   const [loadError, setLoadError] = useState("");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -31,14 +42,19 @@ export function IdVerification({ userId }: { userId: string }) {
   useEffect(() => {
     let active = true;
     fetchLatestIdVerification(userId)
-      .then(latest => {
-        if (active) setStatus(latest);
+      .then(result => {
+        if (active) {
+          setLatest(result);
+          setLoading(false);
+        }
       })
       .catch(() => {
-        if (active)
+        if (active) {
+          setLoading(false);
           setLoadError(
             "We couldn’t load your ID verification status. Please refresh the page.",
           );
+        }
       });
     return () => {
       active = false;
@@ -68,7 +84,7 @@ export function IdVerification({ userId }: { userId: string }) {
     setBusy(true);
     try {
       await submitIdVerification(userId, file);
-      setStatus("pending");
+      setLatest({ verification_status: "pending", rejection_reason: null });
       setOpen(false);
       setMessage("Your ID photo was submitted and is pending review.");
     } catch {
@@ -80,13 +96,25 @@ export function IdVerification({ userId }: { userId: string }) {
   }
 
   // A pending or verified submission needs no new upload; a failed (rejected) one can retry.
-  const canSubmit = status === null || status === "failed";
+  const canSubmit =
+    !loading && !loadError && (status === null || status === "failed");
   return (
     <div>
       <p>
         ID verification:{" "}
-        <strong>{status ? STATUS_LABELS[status] : "Not submitted"}</strong>
+        <strong>
+          {loading
+            ? "Loading…"
+            : loadError
+              ? "Unavailable"
+              : status
+                ? STATUS_LABELS[status]
+                : "Not submitted"}
+        </strong>
       </p>
+      {status === "failed" && latest?.rejection_reason && (
+        <p>Reason: {latest.rejection_reason}</p>
+      )}
       {loadError && (
         <p role="alert" className={styles.error}>
           {loadError}
@@ -94,7 +122,7 @@ export function IdVerification({ userId }: { userId: string }) {
       )}
       {canSubmit && !open && (
         <button type="button" onClick={() => setOpen(true)}>
-          Verify
+          {status === "failed" ? "Resubmit ID photo" : "Verify"}
         </button>
       )}
       {open && (
