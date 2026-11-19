@@ -24,6 +24,7 @@ import {
 } from "@/lib/participant-profile";
 import { supabase } from "@/lib/supabase";
 import { DocumentUploads } from "./document-uploads";
+import { IdVerification } from "./id-verification";
 import { ParticipantAccess } from "./participant-access";
 import { Field, PersonalFields, UnverifiedBadge } from "./profile-fields";
 
@@ -232,11 +233,9 @@ function ProfileEditor({
 }) {
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
-  const [verificationOpen, setVerificationOpen] = useState(false);
   const [editingFiles, setEditingFiles] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [accountError, setAccountError] = useState("");
-  const verificationRef = useRef<HTMLDialogElement>(null);
   const unverified = !profile.verification_status;
   const joined = new Date(joinedAt);
   const memberSince = Number.isNaN(joined.getTime())
@@ -261,10 +260,6 @@ function ProfileEditor({
     ? `${profile.service_start_date.slice(0, 4)}–${profile.service_end_date?.slice(0, 4) || "present"}`
     : undefined;
 
-  useEffect(() => {
-    if (verificationOpen) verificationRef.current?.showModal();
-    else verificationRef.current?.close();
-  }, [verificationOpen]);
   function saved(next: ParticipantProfile, section: ProfileSection) {
     // A slower save response must not replace a different card's newer values.
     setProfile(current => ({
@@ -303,12 +298,9 @@ function ProfileEditor({
         <nav aria-label="Participant navigation" className={styles.navActions}>
           <Link href="/my-events">My events</Link>
           {unverified && (
-            <Button
-              className={styles.verifyButton}
-              onClick={() => setVerificationOpen(true)}
-            >
+            <Link className={styles.verifyButton} href="#id-verification">
               Verify veteran status
-            </Button>
+            </Link>
           )}
           <details className={styles.accountMenu}>
             <summary aria-label="Account menu" className={styles.avatar}>
@@ -339,30 +331,19 @@ function ProfileEditor({
             {accountError}
           </p>
         )}
-        {unverified && (
-          <section
-            className={styles.statusBanner}
-            aria-label="Profile verification"
-          >
-            <span className={styles.infoIcon}>
-              <Image src="/images/info.svg" width={17} height={17} alt="" />
-            </span>
-            <div>
-              <h2>Your profile is unverified</h2>
-              <p>
-                You can add your details and upload files now. Your military
-                service, education, employment, and documents remain
-                self-reported until VTS verifies your status.
-              </p>
-              <Button
-                className={styles.textButton}
-                onClick={() => setVerificationOpen(true)}
-              >
-                Verify veteran status →
-              </Button>
-            </div>
-          </section>
-        )}
+        <section
+          id="id-verification"
+          className={styles.statusBanner}
+          aria-label="Profile verification"
+        >
+          <div>
+            <h2>Veteran status verification</h2>
+            <IdVerification
+              userId={profile.id}
+              verified={profile.verification_status}
+            />
+          </div>
+        </section>
         <div className={styles.cards}>
           <EditableCard
             title="Personal info"
@@ -595,31 +576,6 @@ function ProfileEditor({
           </EditableCard>
         </div>
       </main>
-      {unverified && (
-        <dialog
-          ref={verificationRef}
-          className={styles.dialog}
-          aria-labelledby="verification-title"
-          onCancel={() => setVerificationOpen(false)}
-          onClose={() => setVerificationOpen(false)}
-        >
-          <h2 id="verification-title">Veteran status verification</h2>
-          <p>
-            Verification is not available here yet. You can continue editing
-            your profile and uploading supporting documents.
-          </p>
-          <p>
-            Your profile remains unverified. No verification request has been
-            submitted.
-          </p>
-          <Button
-            className={styles.primaryButton}
-            onClick={() => setVerificationOpen(false)}
-          >
-            Got it
-          </Button>
-        </dialog>
-      )}
     </>
   );
 }

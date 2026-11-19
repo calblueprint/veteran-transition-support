@@ -17,6 +17,10 @@ export type ParticipantDocument = {
 /** The status values stored in id_verifications.verification_status. */
 export type IdVerificationStatus =
   "pending" | "verified" | "failed" | "manual_review";
+export type IdVerificationSummary = {
+  verification_status: IdVerificationStatus;
+  rejection_reason: string | null;
+};
 // ID photos live in their own folder of the same private bucket, so they never
 // appear in the participant's resume/document lists.
 const ID_FOLDER = "id-verification";
@@ -289,17 +293,17 @@ export function createParticipantData(client: SupabaseClient) {
   /** Returns the status of the participant's most recent submission, or null if none. */
   async function fetchLatestIdVerification(
     userId: string,
-  ): Promise<IdVerificationStatus | null> {
+  ): Promise<IdVerificationSummary | null> {
     await requireUser(userId);
     const { data, error } = await client
       .from("id_verifications")
-      .select("verification_status")
+      .select("verification_status, rejection_reason")
       .eq("participant_id", userId)
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle<{ verification_status: IdVerificationStatus }>();
+      .maybeSingle<IdVerificationSummary>();
     if (error) throw error;
-    return data?.verification_status ?? null;
+    return data ?? null;
   }
 
   return {

@@ -13,7 +13,11 @@ export default function RoleNavigation() {
   return (
     <nav aria-label="Main navigation">
       {isAdmin ? (
-        <Link href="/workshops">Admin Workshops</Link>
+        <>
+          <Link href="/workshops">Admin Workshops</Link>
+          {" · "}
+          <Link href="/verifications">ID verifications</Link>
+        </>
       ) : (
         <Link href="/profile">My Profile</Link>
       )}

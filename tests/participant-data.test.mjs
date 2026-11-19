@@ -302,9 +302,15 @@ test("ID verification rejects non-image files and failed uploads without a datab
 
 test("latest ID verification status is read for the signed-in participant, newest first", async () => {
   const { api, requests } = fixture(() => ({
-    body: { verification_status: "pending" },
+    body: {
+      verification_status: "failed",
+      rejection_reason: "Photo is unreadable",
+    },
   }));
-  assert.equal(await api.fetchLatestIdVerification(userId), "pending");
+  assert.deepEqual(await api.fetchLatestIdVerification(userId), {
+    verification_status: "failed",
+    rejection_reason: "Photo is unreadable",
+  });
   assert.ok(requests[0].url.includes(`participant_id=eq.${userId}`));
   assert.ok(requests[0].url.includes("order=created_at.desc"));
   assert.ok(requests[0].url.includes("limit=1"));
